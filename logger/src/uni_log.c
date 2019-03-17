@@ -33,10 +33,7 @@
 #include <inttypes.h>
 #include <unistd.h>
 
-#define LOG_PTHREAD_CNT_MAX  (128)
 #define LOG_BUFFER_LEN       (1024)
-#define LOG_INVALID_PID      (-1)
-#define LOG_WRITE_WAIT_MS    (100)
 #define LOG_FILE_NAME        "app.log"
 #define uni_min(x,y)         ({ \
                                 typeof(x) _x = (x); \
