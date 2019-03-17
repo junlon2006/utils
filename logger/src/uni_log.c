@@ -50,28 +50,11 @@
                                 _x > _y ? _x : _y;})
 
 typedef struct {
-  pthread_t       pid;
-  char            *buf;
-  int             buf_len;
-  int             remain_len;
-  pthread_mutex_t mutex;
-} LogBuffer;
-
-typedef struct {
-  LogBuffer       log_buf[LOG_PTHREAD_CNT_MAX];
-  int             current_alive_thread_cnt;
-  int             is_running;
-  pthread_mutex_t mutex;
-} LogAttrInfo;
-
-typedef struct {
   int             fd;
   pthread_mutex_t mutex;
-  pthread_t       async_pid;
 } LogFile;
 
 static LogConfig   g_log_config = {1, 1, 1, 1, N_LOG_ALL};
-static LogAttrInfo g_log_attr;
 static LogFile     g_log_file;
 
 static const char* _level_tostring(LogLevel level) {
@@ -209,39 +192,6 @@ int LogLevelValid(LogLevel level) {
                       level != N_LOG_RAW); \
 } while (0)
 
-static int _pid_exist(pthread_t pid) {
-  int i;
-  for (i = 0; i < g_log_attr.current_alive_thread_cnt; i++) {
-    if (g_log_attr.log_buf[i].pid == pid) {
-      return 1;
-    }
-  }
-  return 0;
-}
-
-static int _set_pid_info(pthread_t pid) {
-  int index = g_log_attr.current_alive_thread_cnt;
-  if (index == LOG_PTHREAD_CNT_MAX) {
-    return -1;
-  }
-  g_log_attr.log_buf[index].pid = pid;
-  g_log_attr.log_buf[index].buf = (char *)malloc(LOG_BUFFER_LEN);
-  g_log_attr.log_buf[index].buf_len = LOG_BUFFER_LEN;
-  g_log_attr.log_buf[index].remain_len = 0;
-  g_log_attr.current_alive_thread_cnt++;
-  return 0;
-}
-
-static LogBuffer* _get_pid_info(pthread_t pid) {
-  int i;
-  for (i = 0; i < g_log_attr.current_alive_thread_cnt; i++) {
-    if (g_log_attr.log_buf[i].pid == pid) {
-      return &g_log_attr.log_buf[i];
-    }
-  }
-  return NULL;
-}
-
 static int _sync_write_process(LogLevel level, const char *tags,
                                const char *function, int line,
                                char *fmt, va_list args) {
@@ -249,49 +199,6 @@ static int _sync_write_process(LogLevel level, const char *tags,
   _log_assemble(buf, level, tags, function, line, fmt, args);
   printf("%s", buf);
   _save_log_2_file(buf, strlen(buf) + 1);
-  return 0;
-}
-
-static void _append_format_log_2_logbuffer(LogBuffer *buffer, char *buf) {
-  int new_str_len;
-  if ((buffer->buf_len - buffer->remain_len - 1) <
-      (new_str_len = strlen(buf))) {
-    return;
-  }
-  pthread_mutex_lock(&buffer->mutex);
-  if (0 == buffer->remain_len) {
-    strcpy(buffer->buf, buf);
-  } else {
-    strcat(buffer->buf, buf);
-  }
-  buffer->remain_len += new_str_len;
-  pthread_mutex_unlock(&buffer->mutex);
-  return;
-}
-
-static int _async_write_process(LogLevel level, const char *tags,
-                                const char *function, int line,
-                                char *fmt, va_list args) {
-  pthread_t pid;
-  LogBuffer *buffer;
-  int pid_exist;
-  char buf[LOG_BUFFER_LEN];
-  pid = _get_thread_id();
-  pid_exist = _pid_exist(pid);
-  if (!pid_exist) {
-    pthread_mutex_lock(&g_log_attr.mutex);
-    pid_exist = _pid_exist(pid);
-    if (!pid_exist && -1 == _set_pid_info(pid)) {
-      pthread_mutex_unlock(&g_log_attr.mutex);
-      return -1;
-    }
-    pthread_mutex_unlock(&g_log_attr.mutex);
-  }
-  if (NULL == (buffer = _get_pid_info(pid))) {
-    return -1;
-  }
-  _log_assemble(buf, level, tags, function, line, fmt, args);
-  _append_format_log_2_logbuffer(buffer, buf);
   return 0;
 }
 
@@ -305,9 +212,8 @@ int LogWrite(LogLevel level, const char *tags, const char *function, int line,
 }
 
 static void _destroy_all() {
-  int i;
-  for (i = 0; i < g_log_attr.current_alive_thread_cnt; i++) {
-    free(g_log_attr.log_buf[i].buf);
+  if (g_log_config.enable_file) {
+    pthread_mutex_destroy(&g_log_file.mutex);
   }
 }
 
