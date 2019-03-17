@@ -27,7 +27,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define RINGBBUF_FILL_BYTE_SIZE  (4)
+#define RINGBBUF_FILL_BYTE_SIZE  (1)
 #define RINGBBUF_ATTR_READ       (1 << 0)
 #define RINGBBUF_ATTR_SYNC       (1 << 1)
 #define RINGBBUF_ATTR_WRITE      (1 << 2)
