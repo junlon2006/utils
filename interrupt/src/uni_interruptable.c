@@ -89,7 +89,6 @@ static int _select(int maxfd, fd_set *readfds, fd_set *writefds,
                 timeout_ms < 0 ? NULL : &tv);
 }
 
-
 static int _interruptable_select(Interruptable *interrupter, int maxfd,
                                  fd_set *readfds, fd_set *writefds,
                                  fd_set *errorfds, int timeout_ms) {
