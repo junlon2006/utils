@@ -51,8 +51,8 @@ typedef struct {
   pthread_mutex_t mutex;
 } LogFile;
 
-static LogConfig   g_log_config = {1, 1, 1, 1, N_LOG_ALL};
-static LogFile     g_log_file;
+static LogConfig g_log_config = {1, 1, 1, 1, N_LOG_ALL};
+static LogFile   g_log_file;
 
 static const char* _level_tostring(LogLevel level) {
   switch (level) {
