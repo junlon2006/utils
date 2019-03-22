@@ -114,7 +114,7 @@ InterruptHandle InterruptCreate() {
   if (NULL == interrupter) {
     return NULL;
   }
-  if(0 != _async_pipe(interrupter->fd)) {
+  if (0 != _async_pipe(interrupter->fd)) {
     free(interrupter);
     return NULL;
   }
