@@ -16,7 +16,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  **************************************************************************
  *
- * Description : uni_ringbuf.h
+ * Description : uni_memcheck.h
  * Author      : junlon2006@163.com
  * Date        : 2019.03.23
  *
