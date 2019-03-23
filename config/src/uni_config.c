@@ -205,7 +205,7 @@ static cJSON *_get_read_item_object(char *buf, const char *filename,
   if (NULL == father) {
     return NULL;
   }
-  while((buf[i] = *fmt++) != '\0') {
+  while ((buf[i] = *fmt++) != '\0') {
     if (buf[i] == '.') {
       buf[i] = '\0';
       i = 0;
