@@ -32,12 +32,9 @@ typedef struct list_head {
   struct list_head *next, *prev;
 } list_head;
 
-#define LIST_HEAD_INIT(obj) {&(obj), &(obj)}
-
 #define __LIST_ADD(entry,before,after) {list_head *new_= (entry), \
-  *prev = (before), *next = (after); (next)->prev = (new_); \
-  (new_)->next = (next); (new_)->prev = (prev); (prev)->next = (new_);}
-
+                                        *prev = (before), *next = (after); (next)->prev = (new_); \
+                                        (new_)->next = (next); (new_)->prev = (prev); (prev)->next = (new_);}
 #define list_init(entry)               do {(entry)->next = (entry); (entry)->prev = (entry);}  while(0)
 #define list_add(entry,base)           do {__LIST_ADD((entry), (base), (base)->next);} while(0)
 #define list_add_after(entry,base)     do {__LIST_ADD((entry), (base), (base)->next);} while(0)
