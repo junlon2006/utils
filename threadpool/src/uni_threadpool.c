@@ -206,7 +206,6 @@ L_ERROR:
   return NULL;
 }
 
-
 void ThreadPoolDestroy(ThreadPoolHandle handle) {
   ThreadPool *threadpool = (ThreadPool *)handle;
   if (NULL == threadpool) {
