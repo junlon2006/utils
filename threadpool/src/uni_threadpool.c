@@ -33,7 +33,13 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#define THREADPOOL_TAG  "threadpool"
+#define uni_max(x,y)         ({ \
+                                typeof(x) _x = (x); \
+                                typeof(y) _y = (y); \
+                                (void)(&_x == &_y); \
+                                _x > _y ? _x : _y;})
+
+#define THREADPOOL_TAG       "threadpool"
 
 typedef struct {
   list_head        link;
@@ -135,6 +141,7 @@ ThreadPoolHandle ThreadPoolCreate(int thread_cnt) {
   if (thread_cnt == THREADPOOL_DEFAULT_THREAD_CNT) {
     thread_cnt = _cpu_count();
     LOGT(THREADPOOL_TAG, "cpu count=%d", thread_cnt);
+    thread_cnt = uni_max(thread_cnt, 1);
     thread_cnt *= 2;
   }
   if (thread_cnt <= 0) {
