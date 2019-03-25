@@ -14,9 +14,8 @@ static void *__test_tsk(void *args) {
 int main() {
   ThreadPoolHandle handle = ThreadPoolCreate(THREADPOOL_DEFAULT_THREAD_CNT);
   static int count = 0;
-  while (1) {
-    //if (count++ == 100) break;
-    count++;
+  while (handle) {
+    if (count++ == 100) break;
     ThreadPoolJoinWorker(handle, __test_tsk, &count);
     usleep(1000 * 100);
   }

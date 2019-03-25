@@ -94,6 +94,30 @@ static void *_tpool_tsk(void *args) {
   return NULL;
 }
 
+static void _try_destroy_all(ThreadPool *threadpool) {
+  int i;
+  threadpool->is_running = 0;
+  for (i = 0; i < threadpool->thread_cnt; i++) {
+    InterruptableBreak(threadpool->interrupthandle[i]);
+  }
+  for (i = 0; i < threadpool->thread_cnt; i++) {
+    pthread_join(threadpool->pids[i], NULL);
+  }
+  if (NULL != threadpool->mutex) {
+    free(threadpool->mutex);
+  }
+  if (NULL != threadpool->interrupthandle) {
+    free(threadpool->interrupthandle);
+  }
+  if (NULL != threadpool->worker_lists) {
+    free(threadpool->worker_lists);
+  }
+  if (NULL != threadpool->pids) {
+    free(threadpool->pids);
+  }
+  free(threadpool);
+}
+
 static int _cpu_count(void) {
   int n = -1;
 #if defined (_SC_NPROCESSORS_ONLN)
@@ -131,6 +155,23 @@ ThreadPoolHandle ThreadPoolCreate(int thread_cnt) {
     LOGE(THREADPOOL_TAG, "alloc memory failed");
     goto L_ERROR;
   }
+  threadpool->mutex = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t) *
+                                                thread_cnt);
+  if (NULL == threadpool->mutex) {
+    LOGE(THREADPOOL_TAG, "alloc memory failed");
+    goto L_ERROR;
+  }
+  for (i = 0; i < thread_cnt; i++) {
+    pthread_mutex_init(&threadpool->mutex[i], 0);
+  }
+  threadpool->worker_lists = (list_head *)malloc(sizeof(list_head) * thread_cnt);
+  if (NULL == threadpool->worker_lists) {
+    LOGE(THREADPOOL_TAG, "alloc memory failed");
+    goto L_ERROR;
+  }
+  for (i = 0; i < thread_cnt; i++) {
+    list_init(&threadpool->worker_lists[i]);
+  }
   threadpool->is_running = 1;
   for (i = 0; i < thread_cnt; i++) {
     ThreadAttribute *attr = (ThreadAttribute *)malloc(sizeof(ThreadAttribute));
@@ -142,82 +183,37 @@ ThreadPoolHandle ThreadPoolCreate(int thread_cnt) {
     attr->threadpool = threadpool;
     attr->threadpool->interrupthandle[i] = InterruptCreate();
     if (NULL == attr->threadpool->interrupthandle[i]) {
-      LOGE(THREADPOOL_TAG, "create interrupt sleep failed");
+      LOGE(THREADPOOL_TAG, "create interrupt sleep failed, current active "
+           "thread_cnt=%d, recommend thread_cnt equal cpu count * 2 = %d",
+           threadpool->thread_cnt, _cpu_count() * 2);
+      free(attr);
       goto L_ERROR;
     }
     if (0 == pthread_create(&threadpool->pids[i], NULL, _tpool_tsk, attr)) {
       threadpool->thread_cnt++;
       continue;
     }
+    InterruptDestroy(attr->threadpool->interrupthandle[i]);
+    free(attr);
     LOGE(THREADPOOL_TAG, "pthread_create failed, errcode=%s", strerror(errno));
     goto L_ERROR;
-  }
-  threadpool->worker_lists = (list_head *)malloc(sizeof(list_head) *
-                                                 threadpool->thread_cnt);
-  if (NULL == threadpool->worker_lists) {
-    LOGE(THREADPOOL_TAG, "alloc memory failed");
-    goto L_ERROR;
-  }
-  for (i = 0; i < threadpool->thread_cnt; i++) {
-    list_init(&threadpool->worker_lists[i]);
-  }
-  threadpool->mutex = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t) *
-                                                threadpool->thread_cnt);
-  if (NULL == threadpool->mutex) {
-    LOGE(THREADPOOL_TAG, "alloc memory failed");
-    goto L_ERROR;
-  }
-  for (i = 0; i < threadpool->thread_cnt; i++) {
-    pthread_mutex_init(&threadpool->mutex[i], 0);
   }
   srandom(time(NULL));
   LOGT(THREADPOOL_TAG, "active thread count=%d", threadpool->thread_cnt);
   return (ThreadPoolHandle)threadpool;
 L_ERROR:
-  threadpool->is_running = 0;
-  for (i = 0; i < threadpool->thread_cnt; i++) {
-    pthread_join(threadpool->pids[i], NULL);
-  }
-  if (NULL != threadpool->interrupthandle) {
-    free(threadpool->interrupthandle);
-  }
-  if (NULL != threadpool->worker_lists) {
-    free(threadpool->worker_lists);
-  }
-  if (NULL != threadpool->pids) {
-    free(threadpool->pids);
-  }
-  free(threadpool);
+  _try_destroy_all(threadpool);
   return NULL;
 }
 
+
 void ThreadPoolDestroy(ThreadPoolHandle handle) {
   ThreadPool *threadpool = (ThreadPool *)handle;
-  int i;
   if (NULL == threadpool) {
     return;
   }
-  threadpool->is_running = 0;
-  for (i = 0; i < threadpool->thread_cnt; i++) {
-    InterruptableBreak(threadpool->interrupthandle[i]);
-  }
-  for (i = 0; i < threadpool->thread_cnt; i++) {
-    pthread_join(threadpool->pids[i], NULL);
-  }
-  if (threadpool->mutex) {
-    free(threadpool->mutex);
-  }
-  if (NULL != threadpool->interrupthandle) {
-    free(threadpool->interrupthandle);
-  }
-  if (NULL != threadpool->worker_lists) {
-    free(threadpool->worker_lists);
-  }
-  if (NULL != threadpool->pids) {
-    free(threadpool->pids);
-  }
-  free(threadpool);
-}
+  _try_destroy_all(threadpool);
+ }
 
 static list_head *_get_idle_thread_worker_list(ThreadPool *threadpool,
                                                int *thread_index) {
