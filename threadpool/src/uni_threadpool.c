@@ -83,11 +83,8 @@ static void *_tpool_tsk(void *args) {
   WorkerTask *tsk = NULL;
   while (attr->threadpool->is_running) {
     if (NULL != (tsk = _get_worker(attr))) {
-      LOGT(THREADPOOL_TAG, "threadpool[%d] running", attr->thread_index);
       tsk->worker(tsk->args);
       free(tsk);
-    } else {
-      LOGT(THREADPOOL_TAG, "threadpool[%d] null worker", attr->thread_index);
     }
     InterruptableSleep(attr->threadpool->interrupthandle[attr->thread_index], 1000 * 10);
   }

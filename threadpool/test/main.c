@@ -15,9 +15,10 @@ int main() {
   ThreadPoolHandle handle = ThreadPoolCreate(THREADPOOL_DEFAULT_THREAD_CNT);
   static int count = 0;
   while (1) {
-    if (count++ == 100) break;
+    //if (count++ == 100) break;
+    count++;
     ThreadPoolJoinWorker(handle, __test_tsk, &count);
-    usleep(1000 * 1000);
+    usleep(1000 * 100);
   }
   ThreadPoolDestroy(handle);
   return 0;
