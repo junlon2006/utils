@@ -52,7 +52,7 @@ typedef struct {
 
 typedef struct {
   ThreadPool *threadpool;
-  int         thread_index;
+  int        thread_index;
 } ThreadAttribute;
 
 static WorkerTask *_get_worker(ThreadAttribute *attr) {
@@ -85,7 +85,8 @@ static void *_tpool_tsk(void *args) {
       tsk->worker(tsk->args);
       free(tsk);
     }
-    InterruptableSleep(attr->threadpool->interrupthandle[attr->thread_index], 1000 * 10);
+    InterruptableSleep(attr->threadpool->interrupthandle[attr->thread_index],
+                       1000 * 10);
   }
   _destroy_worker_list(attr);
   InterruptDestroy(attr->threadpool->interrupthandle[attr->thread_index]);
