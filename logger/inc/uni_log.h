@@ -39,10 +39,11 @@ typedef enum {
 } LogLevel;
 
 typedef struct {
-  char     enable_time :1;
-  char     enable_thread_id :1;
-  char     enable_function_line :1;
-  char     enable_file :1;
+  int      enable_time;
+  int      enable_thread_id;
+  int      enable_function_line;
+  int      enable_color;
+  int      enable_file;
   LogLevel set_level;
 } LogConfig;
 

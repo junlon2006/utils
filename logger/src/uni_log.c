@@ -51,15 +51,19 @@ typedef struct {
   pthread_mutex_t mutex;
 } LogFile;
 
-static LogConfig g_log_config = {1, 1, 1, 0, N_LOG_ALL};
+static LogConfig g_log_config = {1, 1, 1, 1, 0, N_LOG_ALL};
 static LogFile   g_log_file;
 
 static const char* _level_tostring(LogLevel level) {
   switch (level) {
-    case N_LOG_ERROR: return "[E]";
-    case N_LOG_DEBUG: return "[D]";
-    case N_LOG_TRACK: return "[T]";
-    case N_LOG_WARN:  return "[W]";
+    case N_LOG_ERROR: return g_log_config.enable_color ?
+                             "\033[0m\033[41;33m[E]\033[0m" : "[E]";
+    case N_LOG_DEBUG: return g_log_config.enable_color ?
+                             "\033[0m\033[47;33m[D]\033[0m" : "[D]";
+    case N_LOG_TRACK: return g_log_config.enable_color ?
+                             "\033[0m\033[42;33m[T]\033[0m" : "[T]";
+    case N_LOG_WARN:  return g_log_config.enable_color ?
+                             "\033[0m\033[41;33m[W]\033[0m" : "[W]";
     default:          return "[N/A]";
   }
 }
@@ -88,20 +92,16 @@ static int _fill_log_level(LogLevel level, char *buf, int len) {
   int write_len = 0;
   switch (level) {
     case N_LOG_DEBUG:
-      write_len = snprintf(buf, len, "\033[0m\033[47;33m%s\033[0m ",
-                           _level_tostring(N_LOG_DEBUG));
+      write_len = snprintf(buf, len, "%s ", _level_tostring(N_LOG_DEBUG));
       break;
     case N_LOG_TRACK:
-      write_len = snprintf(buf, len, "\033[0m\033[42;33m%s\033[0m ",
-                           _level_tostring(N_LOG_TRACK));
+      write_len = snprintf(buf, len, "%s ", _level_tostring(N_LOG_TRACK));
       break;
     case N_LOG_WARN:
-      write_len = snprintf(buf, len, "\033[0m\033[41;33m%s\033[0m ",
-                           _level_tostring(N_LOG_WARN));
+      write_len = snprintf(buf, len, "%s ", _level_tostring(N_LOG_WARN));
       break;
     case N_LOG_ERROR:
-      write_len = snprintf(buf, len, "\033[0m\033[41;33m%s\033[0m ",
-                           _level_tostring(N_LOG_ERROR));
+      write_len = snprintf(buf, len, "%s ", _level_tostring(N_LOG_ERROR));
       break;
     default:
       break;
@@ -231,6 +231,7 @@ int LogInitialize(LogConfig logConfig) {
   g_log_config.enable_time = logConfig.enable_time;
   g_log_config.enable_thread_id = logConfig.enable_thread_id;
   g_log_config.enable_function_line = logConfig.enable_function_line;
+  g_log_config.enable_color = logConfig.enable_color;
   g_log_config.enable_file = logConfig.enable_file;
   g_log_config.set_level = logConfig.set_level;
   if (g_log_config.enable_file) {

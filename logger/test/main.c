@@ -66,7 +66,7 @@ int main (int argc, char const *argv[]) {
   pthread_t pid[PTHREAD_CNT];
 
   /*step 1. init config*/
-  LogConfig config = {1, 1, 1, 0, N_LOG_ALL};
+  LogConfig config = {1, 1, 1, 1, 0, N_LOG_ALL};
   LogInitialize(config);
 
   LogLevelSet(N_LOG_ALL);
