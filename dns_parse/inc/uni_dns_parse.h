@@ -34,7 +34,7 @@ extern "C" {
 
 int      DnsParseInit(void);
 void     DnsParseFinal(void);
-uint64_t DnsParseByDomain(char *domain);
+uint64_t DnsParseByDomain(const char *domain);
 
 #ifdef __cplusplus
 }

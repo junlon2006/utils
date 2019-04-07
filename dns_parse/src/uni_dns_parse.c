@@ -60,7 +60,7 @@ static void _mutex_destroy() {
   pthread_mutex_destroy(&g_dns_parse.mutex);
 }
 
-static uint64_t _domain_2_ip(char *domain) {
+static uint64_t _domain_2_ip(const char *domain) {
   struct hostent hostinfo, *host;
   char buf[1024];
   int err = 0;
@@ -125,7 +125,7 @@ void DnsParseFinal(void) {
   _mutex_destroy();
 }
 
-static int _find_exist_ip_by_domain(char *domain, uint64_t *ip) {
+static int _find_exist_ip_by_domain(const char *domain, uint64_t *ip) {
   int ret = -1;
   DnsParseItem *p;
   pthread_mutex_lock(&g_dns_parse.mutex);
@@ -141,7 +141,7 @@ static int _find_exist_ip_by_domain(char *domain, uint64_t *ip) {
   return ret;
 }
 
-static void _insert_new_dns_item_2_list(char *domain, uint64_t *ip) {
+static void _insert_new_dns_item_2_list(const char *domain, uint64_t *ip) {
   DnsParseItem *item = NULL;
   item = malloc(sizeof(DnsParseItem));
   item->domain = malloc(strlen(domain) + 1);
@@ -152,7 +152,7 @@ static void _insert_new_dns_item_2_list(char *domain, uint64_t *ip) {
   pthread_mutex_unlock(&g_dns_parse.mutex);
 }
 
-uint64_t DnsParseByDomain(char *domain) {
+uint64_t DnsParseByDomain(const char *domain) {
   uint64_t ip = DNS_PARSE_INVALID_IP;
   if (0 == _find_exist_ip_by_domain(domain, &ip)) {
     return ip;
