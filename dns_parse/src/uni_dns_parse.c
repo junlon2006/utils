@@ -26,7 +26,7 @@
 
 #include "uni_log.h"
 #include "list_head.h"
-#include "uni_timer.h"
+#include "uni_interruptable.h"
 #include <pthread.h>
 #include <string.h>
 #include <stdlib.h>
@@ -36,7 +36,7 @@
 #include <arpa/inet.h>
 
 #define DNS_PARSE_TAG         "dns_parse"
-#define DNS_REFRESH_MSEC      (60 * 10 * 1000)
+#define DNS_REFRESH_MSEC      (30 * 10 * 1000)
 
 typedef struct {
   list_head link;
@@ -46,7 +46,9 @@ typedef struct {
 
 typedef struct {
   list_head       list;
-  TimerHandle     refresh_timer_handle;
+  int             running;
+  pthread_t       pid;
+  InterruptHandle interrupthandle;
   pthread_mutex_t mutex;
 } DnsParse;
 
@@ -74,32 +76,32 @@ static uint64_t _domain_2_ip(const char *domain) {
   return inet_addr(inet_ntoa(*((struct in_addr *)host->h_addr)));
 }
 
-static int _refresh_dns_cache(void *args) {
-  DnsParseItem *p;
-  uint64_t ip;
-  pthread_mutex_lock(&g_dns_parse.mutex);
-  list_for_each_entry(p, &g_dns_parse.list, DnsParseItem, link) {
-    pthread_mutex_unlock(&g_dns_parse.mutex);
-    ip = _domain_2_ip(p->domain);
-    if (DNS_PARSE_INVALID_IP != ip) {
-      p->ip = ip;
+static void *_refresh_dns_cache(void *args) {
+  while (g_dns_parse.running) {
+    DnsParseItem *p;
+    uint64_t ip;
+    InterruptableSleep(g_dns_parse.interrupthandle, DNS_REFRESH_MSEC);
+    if (!g_dns_parse.running) {
+      break;
     }
-    LOGT(DNS_PARSE_TAG, "refresh dns cache[%s]-->[%0x]", p->domain, p->ip);
     pthread_mutex_lock(&g_dns_parse.mutex);
+    list_for_each_entry(p, &g_dns_parse.list, DnsParseItem, link) {
+      pthread_mutex_unlock(&g_dns_parse.mutex);
+      ip = _domain_2_ip(p->domain);
+      if (DNS_PARSE_INVALID_IP != ip) {
+        p->ip = ip;
+      }
+      LOGT(DNS_PARSE_TAG, "refresh dns cache[%s]-->[%0x]", p->domain, p->ip);
+      pthread_mutex_lock(&g_dns_parse.mutex);
+    }
+    pthread_mutex_unlock(&g_dns_parse.mutex);
   }
-  pthread_mutex_unlock(&g_dns_parse.mutex);
-  return 0;
+  return NULL;
 }
 
-static void _create_refresh_timer() {
-  g_dns_parse.refresh_timer_handle = TimerStart(DNS_REFRESH_MSEC,
-                                                TIMER_TYPE_PERIODICAL,
-                                                _refresh_dns_cache,
-                                                NULL);
-}
-
-static void _destroy_refresh_timer() {
-  TimerStop(g_dns_parse.refresh_timer_handle);
+static void _create_refresh_task() {
+  g_dns_parse.running = 1;
+  pthread_create(&g_dns_parse.pid, NULL, _refresh_dns_cache, NULL);
 }
 
 static void _destroy_list() {
@@ -111,18 +113,26 @@ static void _destroy_list() {
   }
 }
 
+static void _refresh_task_exit() {
+  g_dns_parse.running = 0;
+  InterruptableBreak(g_dns_parse.interrupthandle);
+  pthread_join(g_dns_parse.pid, NULL);
+}
+
 int DnsParseInit(void) {
   memset(&g_dns_parse, 0, sizeof(DnsParse));
   list_init(&g_dns_parse.list);
   _mutex_init();
-  _create_refresh_timer();
+  g_dns_parse.interrupthandle = InterruptCreate();
+  _create_refresh_task();
   return 0;
 }
 
 void DnsParseFinal(void) {
-  _destroy_refresh_timer();
+  _refresh_task_exit();
   _destroy_list();
   _mutex_destroy();
+  InterruptDestroy(g_dns_parse.interrupthandle);
 }
 
 static int _find_exist_ip_by_domain(const char *domain, uint64_t *ip) {
