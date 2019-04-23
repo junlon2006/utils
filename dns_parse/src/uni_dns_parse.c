@@ -30,6 +30,7 @@
 #include <pthread.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <netdb.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -63,11 +64,14 @@ static void _mutex_destroy() {
 }
 
 static uint64_t _domain_2_ip(const char *domain) {
-  struct hostent hostinfo, *host;
+  struct hostent hostinfo, *host = NULL;
   char buf[1024];
   int err = 0;
-  if (0 != gethostbyname_r(domain, &hostinfo, buf, sizeof(buf), &host, &err)) {
-    LOGW(DNS_PARSE_TAG, "dns parse failed. domain=%s", domain);
+  int ret = 0;
+  ret = gethostbyname_r(domain, &hostinfo, buf, sizeof(buf), &host, &err);
+  if (ret != 0 || err != 0 || NULL == host) {
+    LOGW(DNS_PARSE_TAG, "dns parse failed[ret=%d, err=%d, host=%p]. domain=%s",
+         ret, err, host, domain);
     return DNS_PARSE_INVALID_IP;
   }
   LOGT(DNS_PARSE_TAG, "get hostname=%s", host->h_name);
@@ -89,7 +93,12 @@ static void *_refresh_dns_cache(void *args) {
       pthread_mutex_unlock(&g_dns_parse.mutex);
       ip = _domain_2_ip(p->domain);
       if (DNS_PARSE_INVALID_IP != ip) {
+        pthread_mutex_lock(&g_dns_parse.mutex);
         p->ip = ip;
+        pthread_mutex_unlock(&g_dns_parse.mutex);
+      } else {
+        usleep(1000 * 1000);
+        InterruptableBreak(g_dns_parse.interrupthandle);
       }
       LOGT(DNS_PARSE_TAG, "refresh dns cache[%s]-->[%0x]", p->domain, p->ip);
       pthread_mutex_lock(&g_dns_parse.mutex);
@@ -165,6 +174,9 @@ static void _insert_new_dns_item_2_list(const char *domain, uint64_t *ip) {
 uint64_t DnsParseByDomain(const char *domain) {
   uint64_t ip = DNS_PARSE_INVALID_IP;
   if (0 == _find_exist_ip_by_domain(domain, &ip)) {
+    if (DNS_PARSE_INVALID_IP == ip) {
+      InterruptableBreak(g_dns_parse.interrupthandle);
+    }
     return ip;
   }
   _insert_new_dns_item_2_list(domain, &ip);
