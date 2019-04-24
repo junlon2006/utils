@@ -79,10 +79,6 @@ static void _get_now_str(char *buf, int len) {
            local.tm_min, local.tm_sec, (int64_t)tv.tv_usec);
 }
 
-static pthread_t _get_thread_id() {
-  return pthread_self();
-}
-
 static void _get_thread_id_str(char *buf, int len) {
   pthread_t thread_id = pthread_self();
   snprintf(buf, len, "%x", (unsigned int)thread_id);
