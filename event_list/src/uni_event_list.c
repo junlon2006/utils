@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <inttypes.h>
 
 #define _consume_higest_list               _consume_one_list
 #define _consume_medium_list               _consume_one_list
@@ -42,21 +43,21 @@ typedef struct {
 } EventListItem;
 
 typedef struct {
-  list_head                    highest_list;
-  list_head                    medium_list;
-  list_head                    lowest_list;
-  int                          highest_cnt;
-  int                          medium_cnt;
-  int                          lowest_cnt;
-  EventListEventHandler        event_handler;
-  EventListEventFreeHandler    free_handler;
-  _interruptable_handler       highest_interrupt_handler;
-  _interruptable_handler       medium_interrupt_handler;
-  _interruptable_handler       lowest_interrupt_handler;
-  pthread_t                    pid;
-  pthread_mutex_t              mutex;
-  pthread_cond_t               cond;
-  int                          running;
+  list_head                 highest_list;
+  list_head                 medium_list;
+  list_head                 lowest_list;
+  int                       highest_cnt;
+  int                       medium_cnt;
+  int                       lowest_cnt;
+  EventListEventHandler     event_handler;
+  EventListEventFreeHandler free_handler;
+  _interruptable_handler    highest_interrupt_handler;
+  _interruptable_handler    medium_interrupt_handler;
+  _interruptable_handler    lowest_interrupt_handler;
+  pthread_t                 pid;
+  pthread_mutex_t           mutex;
+  pthread_cond_t            cond;
+  int                       running;
 } EventList;
 
 static inline void _consume_one_list(list_head *header,
@@ -144,10 +145,10 @@ static void _free_all(EventList *event_list) {
 }
 
 static void _set_ts(struct timespec *ts) {
-  long long timeout;
+  int64_t timeout;
   clock_gettime(CLOCK_MONOTONIC, ts);
-  timeout = (long long)ts->tv_sec * (long long)1000000000 + (long long)ts->tv_nsec;
-  timeout += (long long)(THREAD_TRY_COND_TIMROUT_MSC * (long long)1000000);
+  timeout = (int64_t)ts->tv_sec * (int64_t)1000000000 + (int64_t)ts->tv_nsec;
+  timeout += (int64_t)(THREAD_TRY_COND_TIMROUT_MSC * (int64_t)1000000);
   ts->tv_sec = (timeout / 1000000000);
   ts->tv_nsec = (timeout % 1000000000);
 }
