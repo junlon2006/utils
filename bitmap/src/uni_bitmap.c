@@ -1,5 +1,5 @@
 /**********************************************************************
- * Copyright (C) 2017-2017  Unisound
+ * Copyright (C) 2017-2017  junlon2006
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
  **********************************************************************
  *
  * Description : uni_bitmap.c
- * Author      : chenxiaosong@unisound.com
+ * Author      : junlon2006@163.com
  * Date        : 2017.9.19
  *
  **********************************************************************/

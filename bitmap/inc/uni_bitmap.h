@@ -77,4 +77,4 @@ int BitMapTest(BitMap *bitmap, int i);
 #ifdef __cplusplus
 }
 #endif
-#endif  //  UTILS_BITMAP_INC_UNI_BITMAP_H_
+#endif  //  BITMAP_INC_UNI_BITMAP_H_
