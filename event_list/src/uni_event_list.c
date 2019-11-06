@@ -31,7 +31,7 @@
 #define _consume_higest_list               _consume_one_list
 #define _consume_medium_list               _consume_one_list
 #define _consume_lowest_list               _consume_one_list
-#define THREAD_TRY_COND_TIMROUT_MSC    (1000)
+#define THREAD_TRY_COND_TIMROUT_MSC        (1000)
 
 typedef int (*_interruptable_handler)(void *args);
 
