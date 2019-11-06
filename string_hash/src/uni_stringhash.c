@@ -24,9 +24,9 @@
 #include "uni_stringhash.h"
 
 unsigned int GetStringHashCode(const char *str) {
-  int hashcode = 0;
-  char c;
-  int tmp;
+  unsigned int hashcode = 0;
+  unsigned char c;
+  unsigned int tmp;
   /* use c perf memory load, use shift perf * 31 */
   while ((c = *str++) != '\0') {
     hashcode += c;
