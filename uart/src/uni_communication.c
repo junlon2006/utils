@@ -10,31 +10,31 @@
 /*    帧头    |   类型    |    cmd    | checksum  |payload len|   payload   */
 /*--------------------------------------------------------------------------*/
 
-typedef unsigned short UniCommChecksum;
-typedef unsigned char  UniCommSync;
+typedef unsigned short CommChecksum;
+typedef unsigned char  CommSync;
 
 typedef struct {
-  UniCommSync       sync;
-  UniCommType       type;
-  UniCommCmd        cmd;
-  UniCommChecksum   checksum;
-  UniCommPayloadLen payload_len;
-  char              payload[0];
-} PACKED UniCommProtocolPacket;
+  CommSync       sync;
+  CommType       type;
+  CommCmd        cmd;
+  CommChecksum   checksum;
+  CommPayloadLen payload_len;
+  char           payload[0];
+} PACKED CommProtocolPacket;
 
 typedef enum {
   E_UNI_COMM_ALLOC_FAILED = -10001,
   E_UNI_COMM_BUFFER_PTR_NULL,
-} UniCommProtocolErrorCode;
+} CommProtocolErrorCode;
 
-static UniCommWriteHandler _on_write = NULL;
+static CommWriteHandler _on_write = NULL;
 
-int UniCommProtocolRegisterWriteHandler(UniCommWriteHandler handler) {
+int CommProtocolRegisterWriteHandler(CommWriteHandler handler) {
   _on_write = handler;
   return 0;
 }
 
-char* uni_comm_error_code_2_string(UniCommProtocolErrorCode code) {
+char* uni_comm_error_code_2_string(CommProtocolErrorCode code) {
   switch (code) {
   case E_UNI_COMM_ALLOC_FAILED:
     return "E_UNI_COMM_ALLOC_FAILED";
@@ -45,64 +45,64 @@ char* uni_comm_error_code_2_string(UniCommProtocolErrorCode code) {
   }
 }
 
-static int _uni_comm_protocol_sync_set(UniCommProtocolPacket *packet) {
+static int _uni_comm_protocol_sync_set(CommProtocolPacket *packet) {
   packet->sync = UNI_COMM_SYNC_VALUE;
   return 0;
 }
 
-UniCommSync uni_comm_protocol_sync_get(UniCommProtocolPacket *packet) {
+CommSync uni_comm_protocol_sync_get(CommProtocolPacket *packet) {
   return packet->sync;
 }
 
-static int _uni_comm_protocol_product_type_set(UniCommProtocolPacket *packet,
-                                               UniCommType type) {
+static int _uni_comm_protocol_product_type_set(CommProtocolPacket *packet,
+                                               CommType type) {
   packet->type = type;
   return 0;
 }
 
-UniCommType uni_comm_protocol_product_type_get(UniCommProtocolPacket *packet,
-                                               UniCommType type) {
+CommType uni_comm_protocol_product_type_get(CommProtocolPacket *packet,
+                                            CommType type) {
   return packet->type;
 }
 
-static int _uni_comm_protocol_cmd_set(UniCommProtocolPacket *packet,
-                                      UniCommCmd cmd) {
+static int _uni_comm_protocol_cmd_set(CommProtocolPacket *packet,
+                                      CommCmd cmd) {
   packet->cmd = cmd;
   return 0;
 }
 
-UniCommCmd uni_comm_protocol_cmd_get(UniCommProtocolPacket *packet) {
+CommCmd uni_comm_protocol_cmd_get(CommProtocolPacket *packet) {
   return packet->cmd;
 }
 
-static int _uni_comm_protocol_payload_len_set(UniCommProtocolPacket *packet,
-                                              UniCommPayloadLen payload_len) {
+static int _uni_comm_protocol_payload_len_set(CommProtocolPacket *packet,
+                                              CommPayloadLen payload_len) {
   packet->payload_len = payload_len;
   return 0;
 }
 
-static UniCommPayloadLen _uni_comm_protocol_payload_len_get(UniCommProtocolPacket *packet) {
+static CommPayloadLen _uni_comm_protocol_payload_len_get(CommProtocolPacket *packet) {
   return packet->payload_len;
 }
 
-static int _uni_comm_protocol_payload_set(UniCommProtocolPacket *packet,
+static int _uni_comm_protocol_payload_set(CommProtocolPacket *packet,
                                           char *buf,
-                                          UniCommPayloadLen len) {
+                                          CommPayloadLen len) {
   if (NULL != buf && 0 < len) {
     memcpy(packet->payload, buf, len);
   }
   return 0;
 }
 
-static char* _uni_comm_protocol_payload_get(UniCommProtocolPacket *packet) {
+static char* _uni_comm_protocol_payload_get(CommProtocolPacket *packet) {
   return packet->payload;
 }
 
-static UniCommPayloadLen _uni_comm_protocol_packet_len_get(UniCommProtocolPacket *packet) {
-  return sizeof(UniCommProtocolPacket) + packet->payload_len;
+static CommPayloadLen _uni_comm_protocol_packet_len_get(CommProtocolPacket *packet) {
+  return sizeof(CommProtocolPacket) + packet->payload_len;
 }
 
-static int _uni_comm_protocol_checksum_calc(UniCommProtocolPacket *packet) {
+static int _uni_comm_protocol_checksum_calc(CommProtocolPacket *packet) {
   int packet_len = _uni_comm_protocol_packet_len_get(packet);
   int i;
   unsigned short checksum = 0;
@@ -114,23 +114,22 @@ static int _uni_comm_protocol_checksum_calc(UniCommProtocolPacket *packet) {
   return 0;
 }
 
-UniCommChecksum uni_comm_protocol_checksum_get(UniCommProtocolPacket *packet) {
+CommChecksum uni_comm_protocol_checksum_get(CommProtocolPacket *packet) {
   return packet->checksum;
 }
 
-static int _uni_comm_protocol_checksum_valid(UniCommProtocolPacket *packet) {
-  UniCommChecksum checksum = packet->checksum; /* get the checksum from packet */
+static int _uni_comm_protocol_checksum_valid(CommProtocolPacket *packet) {
+  CommChecksum checksum = packet->checksum; /* get the checksum from packet */
   _uni_comm_protocol_checksum_calc(packet); /* calc checksum again */
   return checksum == packet->checksum; /* check whether checksum valid or not */
 }
 
 #define UNI_COMM_PACKET_ALLOC(payload_len) \
-  ((UniCommProtocolPacket *)(malloc(sizeof(UniCommProtocolPacket) + payload_len)))
+  ((CommProtocolPacket *)(malloc(sizeof(CommProtocolPacket) + payload_len)))
 #define UNI_COMM_PACKET_FREE(packet) (free(packet))
-int UniCommProtocolPacketAssembleAndSend(UniCommType type, UniCommCmd cmd,
-                                         char *payload,
-                                         UniCommPayloadLen payload_len) {
-  UniCommProtocolPacket *packet = UNI_COMM_PACKET_ALLOC(payload_len);
+int CommProtocolPacketAssembleAndSend(CommType type, CommCmd cmd,
+                                      char *payload, CommPayloadLen payload_len) {
+  CommProtocolPacket *packet = UNI_COMM_PACKET_ALLOC(payload_len);
   if (NULL == packet) {
     return E_UNI_COMM_ALLOC_FAILED;
   }
@@ -147,21 +146,21 @@ int UniCommProtocolPacketAssembleAndSend(UniCommType type, UniCommCmd cmd,
   return 0;
 }
 
-int UniCommPacketFree(UniCommPacket *packet) {
+int CommPacketFree(CommPacket *packet) {
   if (NULL != packet) {
     free(packet);
   }
   return 0;
 }
 
-UniCommPacket* UniCommProtocolPacketDisassemble(char *buf, int len) {
-  UniCommPacket *packet = NULL;
-  UniCommProtocolPacket *protocol_packet = (UniCommProtocolPacket *)buf;
+CommPacket* CommProtocolPacketDisassemble(char *buf, int len) {
+  CommPacket *packet = NULL;
+  CommProtocolPacket *protocol_packet = (CommProtocolPacket *)buf;
   int alloc_length = 0;
   if (NULL == protocol_packet) {
     return NULL;
   }
-  alloc_length = sizeof(UniCommPacket);
+  alloc_length = sizeof(CommPacket);
   alloc_length += _uni_comm_protocol_payload_len_get(protocol_packet);
   packet = malloc(alloc_length);
   if (NULL == packet) {

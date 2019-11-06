@@ -5,10 +5,10 @@
 extern "C" {
 #endif
 
-typedef unsigned short      UniCommCmd;
-typedef unsigned short      UniCommPayloadLen;
-typedef unsigned short      UniCommType;
-typedef int                 (*UniCommWriteHandler)(char *buf, int len);
+typedef unsigned short      CommCmd;
+typedef unsigned short      CommPayloadLen;
+typedef unsigned short      CommType;
+typedef int                 (*CommWriteHandler)(char *buf, int len);
 
 #define UNI_COMM_SYNC_VALUE (0xFF)
 #define UNI_COMM_TYPE_BASE  (0)
@@ -16,16 +16,17 @@ typedef int                 (*UniCommWriteHandler)(char *buf, int len);
 #define PACKED              __attribute__ ((packed))
 
 typedef struct {
-  UniCommCmd        cmd;
-  UniCommPayloadLen payload_len;
-  char              payload[0];
-} PACKED UniCommPacket;
+  CommCmd        cmd;
+  CommPayloadLen payload_len;
+  char           payload[0];
+} PACKED CommPacket;
 
-int            UniCommProtocolRegisterWriteHandler(UniCommWriteHandler handler);
-int            UniCommProtocolPacketAssembleAndSend(UniCommType type, UniCommCmd cmd,
-                                                    char *payload, UniCommPayloadLen payload_len);
-UniCommPacket *UniCommProtocolPacketDisassemble(char *buf, int len);
-int            UniCommPacketFree(UniCommPacket *packet);
+int        CommProtocolRegisterWriteHandler(CommWriteHandler handler);
+int        CommProtocolPacketAssembleAndSend(CommType type, CommCmd cmd,
+                                             char *payload,
+                                             CommPayloadLen payload_len);
+CommPacket *CommProtocolPacketDisassemble(char *buf, int len);
+int         CommPacketFree(CommPacket *packet);
 
 #ifdef __cplusplus
 }

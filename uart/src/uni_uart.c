@@ -10,7 +10,7 @@
 
 static int uart_fd = -1;
 static char is_running = 0;
-static UniUartFrameData _on_frame = NULL;
+static UartFrameData _on_frame = NULL;
 
 static int _set_speed(speed_t *speed) {
   int status;
@@ -52,7 +52,8 @@ static int _set_parity() {
   return 0;
 }
 
-static void _protocol_buffer_generate(char read_buffer, char *protocol_buffer, int protocol_buffer_length) {
+static void _protocol_buffer_generate(char read_buffer, char *protocol_buffer,
+                                      int protocol_buffer_length) {
   static int index = 0;
   static int length = 0;
   if (protocol_buffer_length <= index) {
@@ -135,16 +136,16 @@ static int _serial_receive_handler_thread_create() {
   return ret;
 }
 
-int UniUartRegisterRecvFrameHandler(UniUartFrameData handler) {
+int UartRegisterRecvFrameHandler(UartFrameData handler) {
   _on_frame = handler;
   return 0;
 }
 
-int UniUartUnregisterRecvFrameHandler() {
+int UartUnregisterRecvFrameHandler() {
   return 0;
 }
 
-int UniUartInitialize(UniUartConfig *config) {
+int UartInitialize(UartConfig *config) {
   int flags = O_RDWR | O_NOCTTY | O_NDELAY;
   uart_fd = open(config->device, flags);
   if (-1 == uart_fd) {
@@ -160,16 +161,16 @@ int UniUartInitialize(UniUartConfig *config) {
     return -1;
   }
   is_running = 1;
-  UniCommProtocolRegisterWriteHandler(UniUartWrite);
+  CommProtocolRegisterWriteHandler(UartWrite);
   _serial_receive_handler_thread_create();
   return 0;
 }
 
-int UniUartFinalize() {
+int UartFinalize() {
   is_running = 0;
   return 0;
 }
 
-int UniUartWrite(char *buf, int len) {
+int UartWrite(char *buf, int len) {
   return write(uart_fd, buf, len);
 }

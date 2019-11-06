@@ -9,18 +9,18 @@ extern "C" {
 
 #define UNI_UART_DEVICE_NAME_MAX  (64)
 
-typedef int (*UniUartFrameData)(char *buf, int len);
+typedef int (*UartFrameData)(char *buf, int len);
 
 typedef struct {
   char    device[UNI_UART_DEVICE_NAME_MAX];
   speed_t speed;
-} UniUartConfig;
+} UartConfig;
 
-int UniUartRegisterRecvFrameHandler(UniUartFrameData handler);
-int UniUartUnregisterRecvFrameHandler();
-int UniUartInitialize(UniUartConfig *config);
-int UniUartFinalize();
-int UniUartWrite(char *buf, int len);
+int UartRegisterRecvFrameHandler(UartFrameData handler);
+int UartUnregisterRecvFrameHandler();
+int UartInitialize(UartConfig *config);
+int UartFinalize();
+int UartWrite(char *buf, int len);
 
 #ifdef __cplusplus
 }
