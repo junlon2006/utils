@@ -60,13 +60,13 @@ typedef struct {
   int                       running;
 } EventList;
 
-static inline void _consume_one_list(list_head *header,
-                                     EventListEventHandler event_handler,
-                                     EventListEventFreeHandler free_handler,
-                                     _interruptable_handler interrupt,
-                                     void *interrupt_args,
-                                     pthread_mutex_t *mutex,
-                                     int *total_cnt, int *running) {
+static void _consume_one_list(list_head *header,
+                              EventListEventHandler event_handler,
+                              EventListEventFreeHandler free_handler,
+                              _interruptable_handler interrupt,
+                              void *interrupt_args,
+                              pthread_mutex_t *mutex,
+                              int *total_cnt, int *running) {
   list_head *p;
   EventListItem *item;
   do {
