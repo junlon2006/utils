@@ -1,0 +1,14 @@
+prefix=/mnt/ws/zhicwang/yzs/Ffmpeg/FFmpeg/arm
+exec_prefix=${prefix}
+libdir=/mnt/ws/zhicwang/yzs/Ffmpeg/FFmpeg/arm/lib
+includedir=/mnt/ws/zhicwang/yzs/Ffmpeg/FFmpeg/arm/include
+
+Name: libavformat
+Description: FFmpeg container format library
+Version: 57.84.100
+Requires: 
+Requires.private: libavcodec >= 57.108.100, libswresample >= 2.10.100, libavutil >= 55.79.100
+Conflicts:
+Libs: -L${libdir}  -lavformat 
+Libs.private: -lasound -L/usr/local/lib -lfdk-aac -lm -ldl -pthread -pthread
+Cflags: -I${includedir}

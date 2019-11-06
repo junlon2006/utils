@@ -1,0 +1,14 @@
+prefix=/mnt/ws/zhicwang/yzs/Ffmpeg/FFmpeg/arm
+exec_prefix=${prefix}
+libdir=/mnt/ws/zhicwang/yzs/Ffmpeg/FFmpeg/arm/lib
+includedir=/mnt/ws/zhicwang/yzs/Ffmpeg/FFmpeg/arm/include
+
+Name: libavutil
+Description: FFmpeg utility library
+Version: 55.79.100
+Requires: 
+Requires.private: 
+Conflicts:
+Libs: -L${libdir}  -lavutil 
+Libs.private: -lm
+Cflags: -I${includedir}

@@ -1,0 +1,11 @@
+prefix=/mnt/ws/zhicwang/yzs/Ffmpeg/fdk-aac-0.1.6/tmp
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: Fraunhofer FDK AAC Codec Library
+Description: AAC codec library
+Version: 0.1.6
+Libs: -L${libdir} -lfdk-aac 
+Libs.private: 
+Cflags: -I${includedir}
