@@ -160,7 +160,7 @@ static struct {
   bool                download_task_is_running;
   bool                force_stop_download;
   bool                current_download_finished;
-  RingBufferHandle       source_ringbuf;
+  RingBufferHandle    source_ringbuf;
   FFmpegSymbolTable   ffmpeg_symbol_table;
 } g_mp3_player;
 
