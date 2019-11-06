@@ -5,9 +5,9 @@
 extern "C" {
 #endif
 
-#define UNI_EVENT_LIST_PRIORITY_HIGHEST  (1 << 0)
-#define UNI_EVENT_LIST_PRIORITY_MEDIUM   (1 << 1)
-#define UNI_EVENT_LIST_PRIORITY_LOWEST   (1 << 2)
+#define EVENT_LIST_PRIORITY_HIGHEST  (1 << 0)
+#define EVENT_LIST_PRIORITY_MEDIUM   (1 << 1)
+#define EVENT_LIST_PRIORITY_LOWEST   (1 << 2)
 
 typedef void* EventListHandle;
 typedef void (*EventListEventHandler)(void *event);

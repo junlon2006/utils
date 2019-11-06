@@ -7,7 +7,7 @@
 #define _consume_higest_list               _consume_one_list
 #define _consume_medium_list               _consume_one_list
 #define _consume_lowest_list               _consume_one_list
-#define UNI_THREAD_TRY_COND_TIMROUT_MSC    (1000)
+#define THREAD_TRY_COND_TIMROUT_MSC    (1000)
 
 typedef int (*_interruptable_handler)(void *args);
 
@@ -123,7 +123,7 @@ static void _set_ts(struct timespec *ts) {
   long long timeout;
   clock_gettime(CLOCK_MONOTONIC, ts);
   timeout = (long long)ts->tv_sec * (long long)1000000000 + (long long)ts->tv_nsec;
-  timeout += (long long)(UNI_THREAD_TRY_COND_TIMROUT_MSC * (long long)1000000);
+  timeout += (long long)(THREAD_TRY_COND_TIMROUT_MSC * (long long)1000000);
   ts->tv_sec = (timeout / 1000000000);
   ts->tv_nsec = (timeout % 1000000000);
 }
@@ -223,13 +223,13 @@ int EventListAdd(EventListHandle handle, void *event, int priority) {
   item->priority = priority;
   item->event = event;
   pthread_mutex_lock(&event_list->mutex);
-  if (UNI_EVENT_LIST_PRIORITY_HIGHEST == priority) {
+  if (EVENT_LIST_PRIORITY_HIGHEST == priority) {
     list_add_tail(&item->link, &event_list->highest_list);
     event_list->highest_cnt++;
-  } else if (UNI_EVENT_LIST_PRIORITY_MEDIUM == priority) {
+  } else if (EVENT_LIST_PRIORITY_MEDIUM == priority) {
     list_add_tail(&item->link, &event_list->medium_list);
     event_list->medium_cnt++;
-  } else if (UNI_EVENT_LIST_PRIORITY_LOWEST == priority) {
+  } else if (EVENT_LIST_PRIORITY_LOWEST == priority) {
     list_add_tail(&item->link, &event_list->lowest_list);
     event_list->lowest_cnt++;
   }
