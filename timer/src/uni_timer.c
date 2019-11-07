@@ -55,7 +55,7 @@ static long long _relative_now(void) {
   return now;
 }
 
-static inline void _orderized_insert(Timer *rt) {
+static void _orderized_insert(Timer *rt) {
   list_head *p = NULL, *t = NULL;
   list_for_each_safe(p, t, &g_timer.timer_list) {
     Timer *c = list_entry(p, Timer, link);
@@ -71,7 +71,7 @@ static unsigned long long _get_id() {
   return ++g_timer.id;
 }
 
-static inline int _add_timer(Timer *rt, long long interval,
+static int _add_timer(Timer *rt, long long interval,
                              TimerType type, TimerExpireCallback fct,
                              unsigned long long id, void *arg) {
   rt->fct = fct;
@@ -93,7 +93,7 @@ static Timer* _is_timer_valid(unsigned long long id) {
   return NULL;
 }
 
-static inline void _del_timer(Timer *rt) {
+static void _del_timer(Timer *rt) {
   list_del(&rt->link);
 }
 
