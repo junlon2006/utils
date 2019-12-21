@@ -28,7 +28,7 @@
 #include <stddef.h>
 
 /*--------------------------------------------------------------------------*/
-/*            layout of uni_sound communication app protocol                */
+/*               layout of UART communication app protocol                  */
 /*--------------------------------------------------------------------------*/
 /*---1byte----|---2byte---|---2byte---|---2byte---|---2byte---|---N byte----*/
 /*    帧头    |   类型    |    cmd    | checksum  |payload len|   payload   */
