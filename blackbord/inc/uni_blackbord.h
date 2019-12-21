@@ -29,8 +29,6 @@
 extern "C" {
 #endif
 
-#include <stdint.h>
-
 typedef enum {
     BB_KEY_INVALID = -1,
     BB_KEY_1,
