@@ -27,9 +27,9 @@
 #include <string.h>
 
 typedef struct {
-  VALUE table[BB_KEY_CNT];
+  VALUE            table[BB_KEY_CNT];
   FreeValueHandler free_handler[BB_KEY_CNT];
-  pthread_mutex_t mutex;
+  pthread_mutex_t  mutex;
 } Blackboard;
 
 static Blackboard g_blackboard;
@@ -60,7 +60,6 @@ VALUE BlackboardRead(BlackboardKey key) {
   pthread_mutex_lock(&g_blackboard.mutex);
   value = g_blackboard.table[key];
   pthread_mutex_unlock(&g_blackboard.mutex);
-
   return value;
 }
 
@@ -70,16 +69,13 @@ int BlackboardWrite(BlackboardKey key, VALUE value, FreeValueHandler free_handle
   }
 
   pthread_mutex_lock(&g_blackboard.mutex);
-
   if (g_blackboard.free_handler[key] != free_handler) {
     if (g_blackboard.free_handler[key] != NULL) {
       g_blackboard.free_handler[key](g_blackboard.table[key]);
     }
     g_blackboard.free_handler[key] = free_handler;
   }
-
   g_blackboard.table[key] = value;
-
   pthread_mutex_unlock(&g_blackboard.mutex);
 
   return 0;
