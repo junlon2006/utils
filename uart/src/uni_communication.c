@@ -360,12 +360,13 @@ static long _get_clock_time_ms(void) {
   return 0;
 }
 
-static uni_bool _bytes_coming_speed_too_low() {
+static uni_bool _bytes_coming_speed_too_slow() {
   static long last_byte_coming_timestamp = 0;
   long now = _get_clock_time_ms();
-  uni_bool timeout = ((now - last_byte_coming_timestamp) > 100 &&
-                      now > last_byte_coming_timestamp);
-  if (timeout) {
+  uni_bool timeout = false;
+  if (now - last_byte_coming_timestamp > 100 &&
+      now > last_byte_coming_timestamp) {
+    timeout = true;
     LOGT(UART_COMM_TAG, "[%u->%u]", last_byte_coming_timestamp, now);
   }
   last_byte_coming_timestamp = now;
@@ -378,7 +379,7 @@ static void _protocol_buffer_generate_byte_by_byte(char recv_c) {
   static int protocol_buffer_length = DEFAULT_PROTOCOL_BUF_SIZE;
   static char *protocol_buffer = NULL;
   /* check timestamp to reset status when physical error */
-  if (index != 0 && _bytes_coming_speed_too_low()) {
+  if (index != 0 && _bytes_coming_speed_too_slow()) {
     LOGT(UART_COMM_TAG, "reset protocol buffer automatically[%d]", index);
     _reset_protocol_buffer_status(&index, &length);
     _try_garbage_collection_protocol_buffer(&protocol_buffer,
