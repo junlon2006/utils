@@ -404,12 +404,12 @@ static void _protocol_buffer_generate_byte_by_byte(char recv_c) {
     protocol_buffer[index++] = recv_c;
     return;
   }
-  /* get payload length (low 8 byte)*/
+  /* get payload length (low 8 bit)*/
   if (LAYOUT_PAYLOAD_LEN_LOW_IDX == index) {
     length = recv_c;
     LOGT(UART_COMM_TAG, "len low=%d", length);
   }
-  /* get payload length (high 8 byte)*/
+  /* get payload length (high 8 bit)*/
   if (LAYOUT_PAYLOAD_LEN_HIGH_IDX == index) {
     length += (((unsigned short)recv_c) << 8);
     LOGT(UART_COMM_TAG, "length=%d", length);
