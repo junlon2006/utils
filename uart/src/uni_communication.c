@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <sys/time.h>
 
 #define UART_COMM_TAG                 "uart_comm"
 #define UNI_COMM_SYNC_VALUE           (0xFF)
@@ -314,13 +315,13 @@ static void _reset_protocol_buffer_status(int *index, int *length) {
   *length = 0;
 }
 
-static void _protocol_buffer_alloc(char **buffer, int *length, int *index) {
+static void _protocol_buffer_alloc(char **buffer, int *length, int index) {
   if (NULL == *buffer) {
     *buffer = uni_malloc(*length);
     LOGT(UART_COMM_TAG, "init buffer=%p, len=%d", *buffer, *length);
     return;
   }
-  if (*length <= *index) {
+  if (*length <= index) {
     _enlarge_protocol_buffer(buffer, length);
     LOGT(UART_COMM_TAG, "protocol buffer enlarge. p=%p, new len=%d",
          *buffer, *length);
@@ -351,11 +352,38 @@ static void _one_protocol_frame_process(char *protocol_buffer) {
   uni_free(packet);
 }
 
+static long _get_clock_time_ms(void) {
+  struct timespec ts;
+  if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
+    return (ts.tv_sec * 1000L + (ts.tv_nsec / 1000000));
+  }
+  return 0;
+}
+
+static uni_bool _bytes_coming_speed_too_low() {
+  static long last_byte_coming_timestamp = 0;
+  long now = _get_clock_time_ms();
+  uni_bool timeout = ((now - last_byte_coming_timestamp) > 100 &&
+                      now > last_byte_coming_timestamp);
+  if (timeout) {
+    LOGT(UART_COMM_TAG, "[%u->%u]", last_byte_coming_timestamp, now);
+  }
+  last_byte_coming_timestamp = now;
+  return timeout;
+}
+
 static void _protocol_buffer_generate_byte_by_byte(char recv_c) {
   static int index = 0;
   static int length = 0;
   static int protocol_buffer_length = DEFAULT_PROTOCOL_BUF_SIZE;
   static char *protocol_buffer = NULL;
+  /* check timestamp to reset status when physical error */
+  if (index != 0 && _bytes_coming_speed_too_low()) {
+    LOGT(UART_COMM_TAG, "reset protocol buffer automatically[%d]", index);
+    _reset_protocol_buffer_status(&index, &length);
+    _try_garbage_collection_protocol_buffer(&protocol_buffer,
+                                            &protocol_buffer_length);
+  }
   /* protect heap use, cannot alloc large than 8K now */
   if (_is_protocol_buffer_overflow(protocol_buffer_length)) {
     /* drop remain bytes of this frame*/
@@ -369,7 +397,7 @@ static void _protocol_buffer_generate_byte_by_byte(char recv_c) {
     LOGW(UART_COMM_TAG, "recv invalid frame, payload too long");
     return;
   }
-  _protocol_buffer_alloc(&protocol_buffer, &protocol_buffer_length, &index);
+  _protocol_buffer_alloc(&protocol_buffer, &protocol_buffer_length, index);
   /* get frame header */
   if (LAYOUT_SYNC_IDX == index && (unsigned char)recv_c == UNI_COMM_SYNC_VALUE) {
     protocol_buffer[index++] = recv_c;
