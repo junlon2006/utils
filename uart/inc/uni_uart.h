@@ -18,7 +18,7 @@
  *
  * Description : uni_uart.h
  * Author      : junlon2006@163.com
- * Date        : 2017.9.19
+ * Date        : 2019.11.28
  *
  **********************************************************************/
 
@@ -29,21 +29,28 @@
 extern "C" {
 #endif
 
-#include <termios.h>
+typedef void (*RecvUartDataHandler)(char *buf, int len);
 
-#define UNI_UART_DEVICE_NAME_MAX  (64)
+/**
+ * @brief uart init
+ * @param handler handle uart receive data hook
+ * @return 0 means success, -1 means failed
+ */
+int UartInitialize(RecvUartDataHandler handler);
 
-typedef int (*UartFrameData)(char *buf, int len);
+/**
+ * @brief uart finalize
+ * @param void
+ * @return void
+ */
+void UartFinalize(void);
 
-typedef struct {
-  char    device[UNI_UART_DEVICE_NAME_MAX];
-  speed_t speed;
-} UartConfig;
-
-int UartRegisterRecvFrameHandler(UartFrameData handler);
-int UartUnregisterRecvFrameHandler();
-int UartInitialize(UartConfig *config);
-int UartFinalize();
+/**
+ * @brief write data by UART, multi-thread unsafe, please write in sync mode
+ * @param buf the data buffer to write
+ * @param len the data length
+ * @return the actual write length by UART
+ */
 int UartWrite(char *buf, int len);
 
 #ifdef __cplusplus
