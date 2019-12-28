@@ -442,7 +442,3 @@ void CommProtocolFinal() {
   _unregister_write_handler();
   _protocol_business_final();
 }
-
-int main() {
-  return 0;
-}
