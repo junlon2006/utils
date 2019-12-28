@@ -1,5 +1,5 @@
 /**************************************************************************
- * Copyright (C) 2017-2017  Unisound
+ * Copyright (C) 2017-2017  Junlon2006
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
  **************************************************************************
  *
  * Description : uni_communication.h
- * Author      : shangjinlong.unisound.com
+ * Author      : junlon2006@163.com
  * Date        : 2019.12.27
  *
  **************************************************************************/
