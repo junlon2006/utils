@@ -92,6 +92,7 @@ typedef struct {
   pthread_mutex_t       mutex;
   uni_bool              acked;
   CommSequence          sequence;
+  char                  *protocol_buffer;
 } CommProtocolBusiness;
 
 static CommProtocolBusiness g_comm_protocol_business;
@@ -377,13 +378,12 @@ static void _protocol_buffer_generate_byte_by_byte(char recv_c) {
   static int index = 0;
   static int length = 0;
   static int protocol_buffer_length = DEFAULT_PROTOCOL_BUF_SIZE;
-  static char *protocol_buffer = NULL;
   /* check timestamp to reset status when physical error */
   if (_bytes_coming_speed_too_slow(index)) {
     LOGT(UART_COMM_TAG, "reset protocol buffer automatically[%d]", index);
     _reset_protocol_buffer_status(&index, &length);
-    _try_garbage_collection_protocol_buffer(&protocol_buffer,
-                                            &protocol_buffer_length);
+    _try_garbage_collection_protocol_buffer( \
+        &g_comm_protocol_business.protocol_buffer, &protocol_buffer_length);
   }
   /* protect heap use, cannot alloc large than 8K now */
   if (_is_protocol_buffer_overflow(protocol_buffer_length)) {
@@ -393,16 +393,17 @@ static void _protocol_buffer_generate_byte_by_byte(char recv_c) {
       return;
     }
     _reset_protocol_buffer_status(&index, &length);
-    _try_garbage_collection_protocol_buffer(&protocol_buffer,
-                                            &protocol_buffer_length);
+    _try_garbage_collection_protocol_buffer( \
+        &g_comm_protocol_business.protocol_buffer, &protocol_buffer_length);
     LOGW(UART_COMM_TAG, "recv invalid frame, payload too long");
     return;
   }
-  _protocol_buffer_alloc(&protocol_buffer, &protocol_buffer_length, index);
+  _protocol_buffer_alloc(&g_comm_protocol_business.protocol_buffer,
+                         &protocol_buffer_length, index);
   /* get frame header sync byte */
   if (LAYOUT_SYNC_IDX == index) {
     if (UNI_COMM_SYNC_VALUE == (unsigned char)recv_c) {
-      protocol_buffer[index++] = recv_c;
+      g_comm_protocol_business.protocol_buffer[index++] = recv_c;
     } else {
       LOGW(UART_COMM_TAG, "actually random data, please check");
     }
@@ -420,21 +421,21 @@ static void _protocol_buffer_generate_byte_by_byte(char recv_c) {
   }
   /* set protocol header */
   if (index < sizeof(CommProtocolPacket)) {
-    protocol_buffer[index++] = recv_c;
+    g_comm_protocol_business.protocol_buffer[index++] = recv_c;
     goto L_END;
   }
   /* set protocol payload */
   if (sizeof(CommProtocolPacket) <= index && 0 < length) {
-    protocol_buffer[index++] = recv_c;
+    g_comm_protocol_business.protocol_buffer[index++] = recv_c;
     length--;
   }
 L_END:
   /* callback protocol buffer */
   if (sizeof(CommProtocolPacket) <= index && 0 == length) {
-    _one_protocol_frame_process(protocol_buffer);
+    _one_protocol_frame_process(g_comm_protocol_business.protocol_buffer);
     _reset_protocol_buffer_status(&index, &length);
-    _try_garbage_collection_protocol_buffer(&protocol_buffer,
-                                            &protocol_buffer_length);
+    _try_garbage_collection_protocol_buffer( \
+        &g_comm_protocol_business.protocol_buffer, &protocol_buffer_length);
   }
 }
 
@@ -462,6 +463,13 @@ static void _protocol_business_final() {
   memset(&g_comm_protocol_business, 0, sizeof(g_comm_protocol_business));
 }
 
+static void _try_free_protocol_buffer() {
+  if (NULL != g_comm_protocol_business.protocol_buffer) {
+    uni_free(g_comm_protocol_business.protocol_buffer);
+    g_comm_protocol_business.protocol_buffer = NULL;
+  }
+}
+
 int CommProtocolInit(CommWriteHandler write_handler,
                      RecvCommPacketHandler recv_handler) {
   _protocol_business_init();
@@ -473,5 +481,6 @@ int CommProtocolInit(CommWriteHandler write_handler,
 void CommProtocolFinal() {
   _unregister_packet_receive_handler();
   _unregister_write_handler();
+  _try_free_protocol_buffer();
   _protocol_business_final();
 }
