@@ -226,7 +226,7 @@ static int _write_uart(CommProtocolPacket *packet, CommAttribute *attribute) {
     pthread_mutex_lock(&g_comm_protocol_business.mutex);
     _unset_acked_sync_flag();
     g_comm_protocol_business.on_write((char *)packet,
-                                       (int)_packet_len_get(packet));
+                                      (int)_packet_len_get(packet));
     ret = _do_packet_attribute(attribute);
     pthread_mutex_unlock(&g_comm_protocol_business.mutex);
   }
@@ -403,18 +403,20 @@ static void _protocol_buffer_generate_byte_by_byte(char recv_c) {
   if (LAYOUT_SYNC_IDX == index) {
     if (UNI_COMM_SYNC_VALUE == (unsigned char)recv_c) {
       protocol_buffer[index++] = recv_c;
+    } else {
+      LOGW(UART_COMM_TAG, "actually random data, please check");
     }
     return;
   }
   /* get payload length (low 8 bit)*/
   if (LAYOUT_PAYLOAD_LEN_LOW_IDX == index) {
     length = recv_c;
-    LOGT(UART_COMM_TAG, "len low=%d", length);
+    LOGD(UART_COMM_TAG, "len low=%d", length);
   }
   /* get payload length (high 8 bit)*/
   if (LAYOUT_PAYLOAD_LEN_HIGH_IDX == index) {
     length += (((unsigned short)recv_c) << 8);
-    LOGT(UART_COMM_TAG, "length=%d", length);
+    LOGD(UART_COMM_TAG, "length=%d", length);
   }
   /* set protocol header */
   if (index < sizeof(CommProtocolPacket)) {
