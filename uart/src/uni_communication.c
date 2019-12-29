@@ -364,8 +364,7 @@ static uni_bool _bytes_coming_speed_too_slow(int index) {
   static long last_byte_coming_timestamp = 0;
   long now = _get_clock_time_ms();
   uni_bool timeout = false;
-  if (now - last_byte_coming_timestamp > 100 &&
-      now >= last_byte_coming_timestamp &&
+  if (now - last_byte_coming_timestamp > 100 && /* lost one check when overflow */
       LAYOUT_SYNC_IDX != index) {
     timeout = true;
     LOGW(UART_COMM_TAG, "[%u->%u]", last_byte_coming_timestamp, now);
