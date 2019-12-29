@@ -458,16 +458,17 @@ static void _protocol_business_init() {
   pthread_mutex_init(&g_comm_protocol_business.mutex, NULL);
 }
 
-static void _protocol_business_final() {
-  pthread_mutex_destroy(&g_comm_protocol_business.mutex);
-  memset(&g_comm_protocol_business, 0, sizeof(g_comm_protocol_business));
-}
-
 static void _try_free_protocol_buffer() {
   if (NULL != g_comm_protocol_business.protocol_buffer) {
     uni_free(g_comm_protocol_business.protocol_buffer);
     g_comm_protocol_business.protocol_buffer = NULL;
   }
+}
+
+static void _protocol_business_final() {
+  pthread_mutex_destroy(&g_comm_protocol_business.mutex);
+  _try_free_protocol_buffer();
+  memset(&g_comm_protocol_business, 0, sizeof(g_comm_protocol_business));
 }
 
 int CommProtocolInit(CommWriteHandler write_handler,
@@ -481,6 +482,5 @@ int CommProtocolInit(CommWriteHandler write_handler,
 void CommProtocolFinal() {
   _unregister_packet_receive_handler();
   _unregister_write_handler();
-  _try_free_protocol_buffer();
   _protocol_business_final();
 }
