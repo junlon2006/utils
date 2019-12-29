@@ -399,9 +399,11 @@ static void _protocol_buffer_generate_byte_by_byte(char recv_c) {
     return;
   }
   _protocol_buffer_alloc(&protocol_buffer, &protocol_buffer_length, index);
-  /* get frame header */
-  if (LAYOUT_SYNC_IDX == index && (unsigned char)recv_c == UNI_COMM_SYNC_VALUE) {
-    protocol_buffer[index++] = recv_c;
+  /* get frame header sync byte */
+  if (LAYOUT_SYNC_IDX == index) {
+    if (UNI_COMM_SYNC_VALUE == (unsigned char)recv_c) {
+      protocol_buffer[index++] = recv_c;
+    }
     return;
   }
   /* get payload length (low 8 bit)*/
