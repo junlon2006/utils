@@ -257,7 +257,7 @@ int CommProtocolPacketAssembleAndSend(CommType type, CommCmd cmd,
                                       CommAttribute *attribute) {
   int ret = 0;
   if (_is_protocol_buffer_overflow(sizeof(CommProtocolPacket) +
-                                          payload_len)) {
+                                   payload_len)) {
     return E_UNI_COMM_PAYLOAD_TOO_LONG;
   }
   CommProtocolPacket *packet = _packet_alloc(payload_len);
