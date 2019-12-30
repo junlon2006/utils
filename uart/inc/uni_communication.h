@@ -50,18 +50,25 @@ typedef struct {
   int      timeout_msec; /* timeout for ack */
 } CommAttribute;
 
-typedef void (*RecvCommPacketHandler)(CommPacket *packet);
+typedef enum {
+  E_UNI_COMM_ALLOC_FAILED = -10001,
+  E_UNI_COMM_BUFFER_PTR_NULL,
+  E_UNI_COMM_PAYLOAD_TOO_LONG,
+  E_UNI_COMM_PAYLOAD_ACK_TIMEOUT,
+} CommProtocolErrorCode;
+
+typedef void (*CommRecvPacketHandler)(CommPacket *packet);
 
 /**
  * @brief communication protocol init
  * @param write_handler the write handler, such as UartWrite int uni_uart.h
- * @param Recv_handler when uart data disassemble as communication protocol frame,
+ * @param recv_handler when uart data disassemble as communication protocol frame,
           the frame will be translate to struct CommPacket,
           then the CommPacket will callback to user
  * @return 0 means success, -1 means failed
  */
 int CommProtocolInit(CommWriteHandler write_handler,
-                     RecvCommPacketHandler Recv_handler);
+                     CommRecvPacketHandler recv_handler);
 
 /**
  * @brief communication protocol finalize
