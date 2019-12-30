@@ -21,23 +21,18 @@
  * Date        : 2019.12.28
  *
  **************************************************************************/
-
 #include "uni_uart.h"
-#include "uni_iot.h"
-#include "uni_log.h"
-#include <fcntl.h>
-#include <stdio.h>
-#include <sys/time.h>
-#include <termios.h>
-#include <unistd.h>
-#include <pthread.h>
 
-#define UART_TAG  "uart"
+#include <stdio.h>
 
 static RecvUartDataHandler _on_recv_uart_data = NULL;
 
 static void _register_uart_recv_hook(RecvUartDataHandler handler) {
   _on_recv_uart_data = handler;
+}
+
+static void _unregister_uart_recv_hook() {
+  _on_recv_uart_data = NULL;
 }
 
 static void _uart_device_init() {
@@ -54,6 +49,6 @@ int UartInitialize(RecvUartDataHandler handler) {
 }
 
 void UartFinalize() {
-  _recv_uart_data_handler(NULL);
+  _unregister_uart_recv_hook();
   return;
 }

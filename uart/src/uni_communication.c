@@ -49,14 +49,14 @@
 #define true                          1
 
 /*----------------------------------------------------------------------------*/
-/*            layout of uni_sound communication app protocol                  */
+/*                layout of uart communication app protocol                   */
 /*----------------------------------------------------------------------------*/
 /*-1byte-|-1byte-|---2byte---|---2byte---|---2byte---|---2byte---|---N byte---*/
 /*  SYNC |seq-num| customer  |  command  | checksum  |payload len|   payload  */
 /*----------------------------------------------------------------------------*/
 
 /*--------------------------------ack frame-----------------------------------*/
-/*  0xFF | seqNum|    0x0    |   0x0     |   0xFF    |    0x0    |    NULL    */
+/*  0xFF | seqNum|    0x0    |   0x0     |   crc16   |    0x0    |    NULL    */
 /*----------------------------------------------------------------------------*/
 
 typedef unsigned short CommChecksum;
@@ -79,16 +79,9 @@ typedef struct {
   char           payload[0];    /* the payload */
 } PACKED CommProtocolPacket;
 
-typedef enum {
-  E_UNI_COMM_ALLOC_FAILED = -10001,
-  E_UNI_COMM_BUFFER_PTR_NULL,
-  E_UNI_COMM_PAYLOAD_TOO_LONG,
-  E_UNI_COMM_PAYLOAD_ACK_TIMEOUT,
-} CommProtocolErrorCode;
-
 typedef struct {
   CommWriteHandler      on_write;
-  RecvCommPacketHandler on_recv_frame;
+  CommRecvPacketHandler on_recv_frame;
   pthread_mutex_t       mutex;
   uni_bool              acked;
   CommSequence          sequence;
@@ -445,7 +438,7 @@ void CommProtocolReceiveUartData(char *buf, int len) {
   }
 }
 
-static void _register_packet_receive_handler(RecvCommPacketHandler handler) {
+static void _register_packet_receive_handler(CommRecvPacketHandler handler) {
   g_comm_protocol_business.on_recv_frame = handler;
 }
 
@@ -472,7 +465,7 @@ static void _protocol_business_final() {
 }
 
 int CommProtocolInit(CommWriteHandler write_handler,
-                     RecvCommPacketHandler recv_handler) {
+                     CommRecvPacketHandler recv_handler) {
   _protocol_business_init();
   _register_write_handler(write_handler);
   _register_packet_receive_handler(recv_handler);
