@@ -32,7 +32,7 @@ extern "C" {
 
 typedef unsigned short      CommCmd;
 typedef unsigned short      CommPayloadLen;
-typedef unsigned short      CommType;
+typedef unsigned char       CommType;
 typedef int                 (*CommWriteHandler)(char *buf, int len);
 
 #define UNI_COMM_TYPE_BASE  (0)
