@@ -164,7 +164,7 @@ static void _cmd_set(CommProtocolPacket *packet, CommCmd cmd) {
 }
 
 static void _payload_len_set(CommProtocolPacket *packet,
-                            CommPayloadLen payload_len) {
+                             CommPayloadLen payload_len) {
   packet->payload_len = payload_len;
 }
 
