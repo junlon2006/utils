@@ -173,7 +173,7 @@ static CommPayloadLen _payload_len_get(CommProtocolPacket *packet) {
 }
 
 static void _payload_set(CommProtocolPacket *packet,
-                        char *buf, CommPayloadLen len) {
+                         char *buf, CommPayloadLen len) {
   if (NULL != buf && 0 < len) {
     memcpy(packet->payload, buf, len);
   }
