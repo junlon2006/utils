@@ -35,15 +35,15 @@ static void _unregister_uart_recv_hook() {
   _on_recv_uart_data = NULL;
 }
 
-static void _uart_device_init() {
+static void _uart_device_init(UartConfig *config) {
 }
 
 int UartWrite(char *buf, int len) {
   return len;
 }
 
-int UartInitialize(RecvUartDataHandler handler) {
-  _uart_device_init();
+int UartInitialize(UartConfig *config, RecvUartDataHandler handler) {
+  _uart_device_init(config);
   _register_uart_recv_hook(handler);
   return 0;
 }
