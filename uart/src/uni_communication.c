@@ -206,15 +206,14 @@ static void _set_acked_sync_flag() {
   g_comm_protocol_business.acked = true;
 }
 
-static uni_bool _is_acked_packet(char *protocol_buffer) {
-  CommProtocolPacket *protocol_packet = (CommProtocolPacket *)protocol_buffer;
+static uni_bool _is_acked_packet(CommProtocolPacket *protocol_packet) {
   return (protocol_packet->type == 0 &&
           protocol_packet->cmd == 0 &&
           protocol_packet->sequence == _current_sequence_get() &&
           protocol_packet->payload_len == 0);
 }
 
-static int _do_packet_attribute(CommAttribute *attribute) {
+static int _wait_ack(CommAttribute *attribute) {
   /* acked process */
   int timeout;
   if (NULL == attribute || !attribute->need_acked) {
@@ -246,15 +245,32 @@ static void _packet_free(CommProtocolPacket *packet) {
   uni_free(packet);
 }
 
+#define RESENDING  (1)
+static int _resend_status(CommAttribute *attribute, int *resend_times) {
+  int ret = _wait_ack(attribute);
+  if (0 == ret) {
+    return 0;
+  }
+  if (*resend_times > 0) {
+    *resend_times = *resend_times - 1;
+    return RESENDING;
+  }
+  return ret;
+}
+
 static int _write_uart(CommProtocolPacket *packet, CommAttribute *attribute) {
   int ret = 0;
+  int resend_times = (attribute != NULL ? attribute->resend_times : 0);
   if (NULL != g_comm_protocol_business.on_write) {
     /* sync uart write, we use mutex lock */
     pthread_mutex_lock(&g_comm_protocol_business.mutex);
     _unset_acked_sync_flag();
-    g_comm_protocol_business.on_write((char *)packet,
-                                      (int)_packet_len_get(packet));
-    ret = _do_packet_attribute(attribute);
+    do {
+      g_comm_protocol_business.on_write((char *)packet,
+                                        (int)_packet_len_get(packet));
+      LOGD(UART_COMM_TAG, "resend times=%d", resend_times);
+      ret = _resend_status(attribute, &resend_times);
+    } while (RESENDING == ret);
     pthread_mutex_unlock(&g_comm_protocol_business.mutex);
   }
   return ret;
@@ -314,9 +330,8 @@ int CommProtocolPacketAssembleAndSend(CommType type, CommCmd cmd,
                                   attribute, 0, false);
 }
 
-static CommPacket* _packet_disassemble(char *buf) {
+static CommPacket* _packet_disassemble(CommProtocolPacket *protocol_packet) {
   CommPacket *packet;
-  CommProtocolPacket *protocol_packet = (CommProtocolPacket *)buf;
   if (!_checksum_valid(protocol_packet)) {
     LOGE(UART_COMM_TAG, "checksum failed");
     return NULL;
@@ -378,35 +393,46 @@ static void _send_ack_frame(CommSequence seq) {
   LOGD(UART_COMM_TAG, "send ack seq=%d", seq);
 }
 
-static void _do_ack(char *protocol_buffer) {
-  CommProtocolPacket *protocol_packet = (CommProtocolPacket *)protocol_buffer;
+static void _do_ack(CommProtocolPacket *protocol_packet) {
   if (_is_ack_set(protocol_packet->control)) {
     _send_ack_frame(protocol_packet->sequence);
   }
 }
 
+static uni_bool _is_duplicate_frame(CommProtocolPacket *protocol_packet) {
+  static int last_recv_packet_seq = -1;
+  uni_bool duplicate;
+  duplicate = (last_recv_packet_seq == (int)protocol_packet->sequence);
+  last_recv_packet_seq = protocol_packet->sequence;
+  LOGD(UART_COMM_TAG, "duplicate=%d", duplicate);
+  return duplicate;
+}
+
 static void _one_protocol_frame_process(char *protocol_buffer) {
+  CommProtocolPacket *protocol_packet = (CommProtocolPacket *)protocol_buffer;
   /* when application not register hook, ignore all*/
   if (NULL == g_comm_protocol_business.on_recv_frame) {
     LOGW(UART_COMM_TAG, "donot register recv_frame hook");
     return;
   }
   /* ack frame donnot notify application, ignore it now */
-  if (_is_acked_packet(protocol_buffer)) {
+  if (_is_acked_packet(protocol_packet)) {
     LOGT(UART_COMM_TAG, "recv ack frame");
     _set_acked_sync_flag();
     return;
   }
   /* disassemble protocol buffer */
-  CommPacket* packet = _packet_disassemble(protocol_buffer);
+  CommPacket* packet = _packet_disassemble(protocol_packet);
   if (NULL == packet) {
     LOGW(UART_COMM_TAG, "disassemble packet failed");
     return;
   }
   /* ack automatically when ack attribute set */
-  _do_ack(protocol_buffer);
-  /* notify application when not ack frame */
-  g_comm_protocol_business.on_recv_frame(packet);
+  _do_ack(protocol_packet);
+  /* notify application when not ack frame nor duplicate frame */
+  if (!_is_duplicate_frame(protocol_packet)) {
+    g_comm_protocol_business.on_recv_frame(packet);
+  }
   uni_free(packet);
 }
 
@@ -462,7 +488,7 @@ static void _protocol_buffer_generate_byte_by_byte(char recv_c) {
     if (UNI_COMM_SYNC_VALUE == (unsigned char)recv_c) {
       g_comm_protocol_business.protocol_buffer[index++] = recv_c;
     } else {
-      LOGW(UART_COMM_TAG, "actually random data, please check");
+      LOGW(UART_COMM_TAG, "nonstandord sync byte, please check");
     }
     return;
   }
@@ -489,6 +515,7 @@ static void _protocol_buffer_generate_byte_by_byte(char recv_c) {
 L_END:
   /* callback protocol buffer */
   if (sizeof(CommProtocolPacket) <= index && 0 == length) {
+    LOGD(UART_COMM_TAG, "assemble new frame, now callback");
     _one_protocol_frame_process(g_comm_protocol_business.protocol_buffer);
     _reset_protocol_buffer_status(&index, &length);
     _try_garbage_collection_protocol_buffer( \
