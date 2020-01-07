@@ -23,9 +23,7 @@ static void _recv_comm_packet(CommPacket *packet) {
 
 int main() {
     CommAttribute attribute;
-    attribute.need_acked = 0;
-    attribute.timeout_msec = 50;
-    attribute.resend_times = 1;
+    attribute.reliable = 0;
     CommProtocolInit(_uart_write_mock_api, _recv_comm_packet);
     char buf[] = {0xff, 0x4, 0x1, 0x1, 0x1, 0x0, 0xf9, 0x4b, 0x0, 0x0};
     //char buf[] = {0xff, 0x3, 0x1, 0x0, 0x1, 0x0, 0x33, 0x42, 0x0, 0x0};

@@ -46,9 +46,7 @@ typedef struct {
 } PACKED CommPacket;
 
 typedef struct {
-  uni_bool need_acked;   /* set true means this packet need acked */
-  int      timeout_msec; /* timeout for ack */
-  int      resend_times; /* resend packet  when cannot receive ack frame */
+  uni_bool reliable; /* true means this packet need acked, reliable transmission */
 } CommAttribute;
 
 typedef enum {

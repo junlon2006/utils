@@ -38,8 +38,12 @@
 #define PROTOCOL_BUF_GC_TRIGGER_SIZE  (256)
 #define PROTOCOL_BUF_SUPPORT_MAX_SIZE (8192)
 
-#define WAIT_ACK_TIMEOUT_MSEC_MIN     (50)
-#define WAIT_ACK_TIMEOUT_MSEC_MAX     (2000)
+#define WAIT_ACK_TIMEOUT_MSEC         (150)
+/* make sure ONE_FRAME_BYTE_TIMEOUT_MSEC < WAIT_ACK_TIMEOUT_MSEC
+ * otherwise resend cannot work, set
+ * WAIT_ACK_TIMEOUT_MSEC = 1.5 * ONE_FRAME_BYTE_TIMEOUT_MSEC */
+#define ONE_FRAME_BYTE_TIMEOUT_MSEC   (100)
+#define TRY_RESEND_TIMES              (2)
 
 #define uni_min(x, y)                 (x < y ? x : y)
 #define uni_max(x, y)                 (x > y ? x : y)
@@ -148,8 +152,8 @@ static uni_bool _is_ack_set(CommControl control) {
   return _is_bit_setted(control, ACK);
 }
 
-static void _control_set(CommProtocolPacket *packet, uni_bool need_ack) {
-  if (need_ack) {
+static void _control_set(CommProtocolPacket *packet, uni_bool reliable) {
+  if (reliable) {
     _set_ack(packet);
   }
 }
@@ -215,13 +219,10 @@ static uni_bool _is_acked_packet(CommProtocolPacket *protocol_packet) {
 
 static int _wait_ack(CommAttribute *attribute) {
   /* acked process */
-  int timeout;
-  if (NULL == attribute || !attribute->need_acked) {
+  int timeout = WAIT_ACK_TIMEOUT_MSEC;
+  if (NULL == attribute || !attribute->reliable) {
     return 0;
   }
-  /* WAIT_ACK_TIMEOUT_MSEC_MAX ~ WAIT_ACK_TIMEOUT_MSEC_MIN 之间有效 */
-  timeout = uni_min(attribute->timeout_msec, WAIT_ACK_TIMEOUT_MSEC_MAX);
-  timeout = uni_max(timeout, WAIT_ACK_TIMEOUT_MSEC_MIN);
   //TODO stupid timeout, use select perf???
   while (timeout > 0) {
     timeout -= 5;
@@ -260,7 +261,7 @@ static int _resend_status(CommAttribute *attribute, int *resend_times) {
 
 static int _write_uart(CommProtocolPacket *packet, CommAttribute *attribute) {
   int ret = 0;
-  int resend_times = (attribute != NULL ? attribute->resend_times : 0);
+  int resend_times = TRY_RESEND_TIMES;
   if (NULL != g_comm_protocol_business.on_write) {
     /* sync uart write, we use mutex lock */
     pthread_mutex_lock(&g_comm_protocol_business.mutex);
@@ -281,13 +282,13 @@ static void _assmeble_packet(CommProtocolPacket *packet,
                              CommCmd cmd,
                              char *payload,
                              CommPayloadLen payload_len,
-                             uni_bool need_ack,
+                             uni_bool reliable,
                              CommSequence seq,
                              uni_bool is_ack_packet) {
   _sync_set(packet);
   _sequence_set(packet, seq, is_ack_packet);
   _product_type_set(packet, type);
-  _control_set(packet, need_ack);
+  _control_set(packet, reliable);
   _cmd_set(packet, cmd);
   _payload_set(packet, payload, payload_len);
   _payload_len_set(packet, payload_len);
@@ -315,7 +316,7 @@ static int _assemble_and_send_frame(CommType type,
     return E_UNI_COMM_ALLOC_FAILED;
   }
   _assmeble_packet(packet, type, cmd, payload, payload_len,
-                   attribute && attribute->need_acked,
+                   attribute && attribute->reliable,
                    seq, is_ack_packet);
    ret = _write_uart(packet, attribute);
   _packet_free(packet);
@@ -448,7 +449,7 @@ static uni_bool _bytes_coming_speed_too_slow(int index) {
   static long last_byte_coming_timestamp = 0;
   long now = _get_clock_time_ms();
   uni_bool timeout = false;
-  if (now - last_byte_coming_timestamp > 100 && /* lost one check when overflow */
+  if (now - last_byte_coming_timestamp > ONE_FRAME_BYTE_TIMEOUT_MSEC && /* lost one check when overflow */
       LAYOUT_SYNC_IDX != index) {
     timeout = true;
     LOGW(UART_COMM_TAG, "[%u->%u]", last_byte_coming_timestamp, now);
