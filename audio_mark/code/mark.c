@@ -33,11 +33,6 @@ typedef struct {
   int   audio_len;
 } PACKED WavHeader;
 
-void get_begin_end_time(float *start_ms, float *stop_ms) {
-  *start_ms = (float)UalOFAGetOptionInt(ASR_ENGINE_UTTERANCE_START_TIME) / 1000.0;
-  *stop_ms = (float)UalOFAGetOptionInt(ASR_ENGINE_UTTERANCE_STOP_TIME) / 1000.0;
-}
-
 typedef struct {
   char *chinese_spell;
   char *chinese_word;
@@ -59,6 +54,11 @@ static void _get_keyword(const char *file_name, char* keyword) {
   }
 
   strcpy(keyword, "filename invalid");
+}
+
+static void _get_begin_end_time(float *start_ms, float *stop_ms) {
+  *start_ms = UalOFAGetOptionInt(ASR_ENGINE_UTTERANCE_START_TIME) / 1000.0;
+  *stop_ms = UalOFAGetOptionInt(ASR_ENGINE_UTTERANCE_STOP_TIME) / 1000.0;
 }
 
 static void _get_txt_file_name_by_wav_file_name(const char *wav_file_name,
@@ -95,7 +95,7 @@ static void _get_asr_result(const char *file_name) {
   }
 
   _get_keyword(file_name, keyword);
-  get_begin_end_time(&start_msec, &stop_msec);
+  _get_begin_end_time(&start_msec, &stop_msec);
   printf("asr_result=%s, start=%f, stop=%f, keyword=%s\n",
          res, start_msec, stop_msec, keyword);
   _get_txt_file_name_by_wav_file_name(file_name, txt_name);
@@ -180,7 +180,6 @@ static void _wav_2_raw_pcm(char *file_name, char **raw_data, int *len) {
 L_END:
   close(fd);
 }
-
 
 static int _get_file_type() {
   DIR *dir;
