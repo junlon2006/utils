@@ -144,7 +144,7 @@ static int _is_wav_format(WavHeader *wavheader, int len) {
       wavheader->audio_len == len);
 }
 
-static void _wav_2_raw_pcm(char *file_name, char **raw_data, int *len) {
+static int  _wav_2_raw_pcm(char *file_name, char **raw_data, int *len) {
   int fd;
   WavHeader wav_header = {0};
 
@@ -153,53 +153,35 @@ static void _wav_2_raw_pcm(char *file_name, char **raw_data, int *len) {
   fd = open(file_name, O_RDWR, 0664);
   if (fd < 0) {
     printf("open file[%s] failed\n", file_name);
-    return;
+    return -1;
   }
 
   *len = lseek(fd, 0, SEEK_END) - sizeof(WavHeader);
-  *raw_data = malloc(*len);
-  memset(*raw_data, 0, *len);
-
   lseek(fd, 0, SEEK_SET);
 
   if (sizeof(WavHeader) != read(fd, &wav_header, sizeof(WavHeader))) {
     printf("read wavheader faild\n");
-    goto L_END;
+    goto L_ERROR;
   }
 
   if (!_is_wav_format(&wav_header, *len)) {
     printf("not wav format, invalid\n");
-    goto L_END;
+    goto L_ERROR;
   }
 
+  *raw_data = malloc(*len);
+  memset(*raw_data, 0, *len);
   if (*len != read(fd, *raw_data, *len)) {
     printf("read raw data failed\n");
-    goto L_END;
+    free(*raw_data);
+    goto L_ERROR;
   }
 
-L_END:
   close(fd);
-}
-
-static int _get_file_type() {
-  DIR *dir;
-  struct dirent *ent;
-  int type;
-
-  if (NULL == (dir = opendir(WAV_PATH))) {
-    printf("open dir [%s] failed\n", WAV_PATH);
-    return -1;
-  }
-
-  while ((ent = readdir(dir)) != NULL) {
-    if (strcmp(ent->d_name, ".") == 0) {
-      type = ent->d_type;
-      break;
-    }
-  }
-
-  closedir(dir);
-  return type;
+  return 0;
+L_ERROR:
+  close(fd);
+  return -1;
 }
 
 static void _recognize_all_one_by_one() {
@@ -208,9 +190,6 @@ static void _recognize_all_one_by_one() {
   char file_name[512];
   char *raw_data;
   int len;
-  int type;
-
-  type = _get_file_type();
 
   system("rm -rf "TXT_PATH"/*");
 
@@ -220,19 +199,19 @@ static void _recognize_all_one_by_one() {
   }
 
   while ((ent = readdir(dir)) != NULL) {
-    if (ent->d_type == type) {
-      if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0) {
-        continue;
-      }
-
-      sprintf(file_name, "%s/%s", WAV_PATH, ent->d_name);
-      _wav_2_raw_pcm(file_name, &raw_data, &len);
-
-      sprintf(file_name, "%s/%s", TXT_PATH, ent->d_name);
-      _recognize(file_name, raw_data, len);
-
-      free(raw_data);
+    if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0) {
+      continue;
     }
+
+    sprintf(file_name, "%s/%s", WAV_PATH, ent->d_name);
+    if (0 != _wav_2_raw_pcm(file_name, &raw_data, &len)) {
+      continue;
+    }
+
+    sprintf(file_name, "%s/%s", TXT_PATH, ent->d_name);
+    _recognize(file_name, raw_data, len);
+
+    free(raw_data);
   }
 
   closedir(dir);
