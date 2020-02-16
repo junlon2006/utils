@@ -14,7 +14,7 @@
 #include <pthread.h>
 
 #define TAG           "Engine"
-#define MAXPATH       (512)
+#define MAXPATH       (2048)
 #define min(a, b)     (a > b ? b : a)
 #define LASR_THRESOLD (-10.0)
 
@@ -73,6 +73,19 @@ static void _load_engine_symbols(const char *current_path) {
   g_engine_symbol_table->UalOFARelease       = (fpUalOFARelease)dlsym(handle, "UalOFARelease");
 }
 
+static void _get_current_workspace(char *path, int len) {
+  getcwd(path, len);
+  LOGT(TAG, "current dir=%s", path);
+}
+
+static void _get_am_path(char *am_path, int len) {
+  char workspace[1024];
+  _get_current_workspace(workspace, sizeof(workspace));
+
+  snprintf(am_path, len, "%s/%s", workspace, "models");
+  LOGT(TAG, "am path=%s", am_path);
+}
+
 static void _engine_init() {
   int status;
   char curr_path[MAXPATH];
@@ -86,8 +99,7 @@ static void _engine_init() {
     g_engine_symbol_table->UalOFARelease();
   }
 
-  getcwd(curr_path, MAXPATH);
-  LOGT(TAG, "current dir=%s", curr_path);
+  _get_current_workspace(curr_path, sizeof(curr_path));
 
   _load_engine_symbols(curr_path);
 
@@ -99,7 +111,8 @@ static void _engine_init() {
   LOGT(TAG, "version=%s", g_engine_symbol_table->UalOFAGetVersion());
   g_engine_symbol_table->UalOFASetOptionInt(ASR_LOG_ID, 0);
 
-  snprintf(am_path, sizeof(am_path), "%s/%s", curr_path, "models");
+  _get_am_path(am_path, sizeof(am_path));
+
   snprintf(grammar, sizeof(grammar), "%s/%s", curr_path, "grammar/ivm_cmd.jsgf.dat");
   LOGT(TAG, "am=%s, grammar=%s", am_path, grammar);
 
@@ -184,7 +197,6 @@ static jboolean _recognize(signed char *raw_data, int len,
   int fix_one_recongize_len = 160;
   int i = 0;
   int status;
-  int index = 0;
   jboolean invalid = false;
 
   pthread_mutex_lock(&g_mutex);
@@ -238,3 +250,57 @@ JNIEXPORT jboolean JNICALL Java_com_unisound_aios_audiocheck_JNI_LocalAsrEngine_
   return result;
 }
 
+JNIEXPORT jint JNICALL Java_com_unisound_aios_audiocheck_JNI_LocalAsrEngine_AsrGrammarBuild
+  (JNIEnv *env, jobject obj, jstring jsgf, jstring jsgf_name) {
+  char am_path[MAXPATH];
+
+  const char *jsgf_content = env->GetStringUTFChars(jsgf, 0);
+  const char *jsgf_dat_name = env->GetStringUTFChars(jsgf_name, 0);
+
+  LOGT(TAG, "JSGF:%s", jsgf_content);
+  LOGT(TAG, "JSGF NAME=%s", jsgf_dat_name);
+
+  _get_am_path(am_path, sizeof(am_path));
+
+  HANDLE compiler = UalOFAInitializeUserDataCompiler(am_path);
+  UalOFAGrammarCompilerSetOptionInt(compiler, ASR_ENGINE_SWITCH_LANGUAGE, MANDARIN);
+  UalOFACompileGrammar(compiler, jsgf_content, "", "result");
+  UalOFAReleaseUserDataCompiler(compiler);
+
+  env->ReleaseStringUTFChars(jsgf, jsgf_content);
+  env->ReleaseStringUTFChars(jsgf_name, jsgf_dat_name);
+}
+/*
+static void _grammar_build() {
+  char *jsgf;
+  int  fd = open("2.jsgf", O_RDWR, 0664);
+  int len = lseek(fd, 0, SEEK_END);
+  lseek(fd, 0, SEEK_SET);
+
+  jsgf = (char *) malloc(len + 1);
+  read(fd, jsgf, len);
+
+  LOGT(TAG, "len=%d", len);
+  jsgf[len] = '\0';
+  LOGT(TAG, "strlen=%d", strlen(jsgf));
+  LOGT(TAG, "jsgf=%s", jsgf);
+
+  char user_data[1024] = {0};
+  user_data[0] = '\0';
+  LOGT(TAG, "user_data=%s", user_data);
+  LOGT(TAG, "user_data_len=%d", strlen(user_data));
+  HANDLE compiler = UalOFAInitializeUserDataCompiler("models");
+  UalOFAGrammarCompilerSetOptionInt(compiler, ASR_ENGINE_SWITCH_LANGUAGE, MANDARIN);
+  LOGT(TAG, "##########");
+  int err = UalOFACompileGrammar(compiler, jsgf, "", "result");
+  LOGT(TAG, "err=%d", err);
+}
+
+int main() {
+  LogConfig logConfig = {1, 1, 1, 1, 0, N_LOG_ALL};
+  LogInitialize(logConfig);
+  LOGT(TAG, "grammar build start");
+  _grammar_build();
+  LOGT(TAG, "grammar build done");
+}
+*/
