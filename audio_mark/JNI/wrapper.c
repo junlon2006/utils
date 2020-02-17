@@ -353,3 +353,48 @@ L_END:
   return ret;
 }
 
+static jboolean _remove_local_useless_grammar_data(const char *remove_list) {
+  char grammar_name[MAXPATH];
+  int index = 0;
+  char c;
+  jboolean grammar_changed = false;
+  while (c = *remove_list++) {
+    if (c == ';') {
+      grammar_name[index] = '\0';
+      if (index != 0) {
+        if (0 == remove(grammar_name)) {
+          LOGT(TAG, "remove grammar=%s success", grammar_name);
+          grammar_changed = true;
+        } else {
+          LOGE(TAG, "remove grammar=%s failed", grammar_name);
+        }
+      }
+      index = 0;
+      continue;
+    }
+
+    grammar_name[index++] = c;
+  }
+
+  return grammar_changed;
+}
+
+JNIEXPORT jint JNICALL Java_com_unisound_aios_audiocheck_JNI_LocalAsrEngine_AsrGrammarRefresh
+  (JNIEnv * env, jobject obj, jstring remove) {
+  const char *remove_grammar_list = env->GetStringUTFChars(remove, 0);
+
+  pthread_mutex_lock(&g_mutex);
+
+  LOGT(TAG, "remove list=%s", remove_grammar_list);
+  jboolean grammar_changed = _remove_local_useless_grammar_data(remove_grammar_list);
+  if (grammar_changed) {
+    _reinit_engine_when_update_grammar();
+  }
+
+  pthread_mutex_unlock(&g_mutex);
+
+  env->ReleaseStringUTFChars(remove, remove_grammar_list);
+
+  fflush(stdout);
+  return 0;
+}
