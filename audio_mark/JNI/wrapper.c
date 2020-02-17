@@ -24,37 +24,84 @@
 #define GRAMMAR_ARRAY_SIZE  (1024 * 512)
 
 static pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
-static int             g_is_engine_init = false;
+static jboolean        g_is_engine_inited = false;
 
-static void _get_current_workspace(char *path, int len) {
+static void _get_workspace(char *path, int len) {
   if (NULL == getcwd(path, len)) {
     LOGE(TAG, "get workspace failed");
     return;
   }
 
-  LOGT(TAG, "current dir=%s", path);
+  LOGT(TAG, "workspace=%s", path);
+}
+
+static void _get_grammar_dir(char *grammar_dir, int len) {
+  char workspace[MAXPATH];
+  _get_workspace(workspace, sizeof(workspace));
+  snprintf(grammar_dir, len, "%s/%s", workspace, "grammar");
+}
+
+static char* _get_grammar_arrays() {
+  DIR *dir;
+  struct dirent *ent;
+  char grammar_dir[MAXPATH];
+  char grammar_name[MAXPATH];
+  char *grammar_arrays;
+  int remain_len = GRAMMAR_ARRAY_SIZE;
+  int i = 1;
+  int err;
+  int grammar_name_len;
+
+  _get_grammar_dir(grammar_dir, sizeof(grammar_dir));
+  LOGT(TAG, "grammar dir=%s", grammar_dir);
+
+  grammar_arrays = (char *)malloc(GRAMMAR_ARRAY_SIZE);
+  grammar_arrays[0] = '\0';
+
+  if (NULL == (dir = opendir(grammar_dir))) {
+    printf("open dir [%s] failed\n", grammar_dir);
+    goto L_END;
+  }
+
+  while ((ent = readdir(dir)) != NULL) {
+    if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0) {
+      continue;
+    }
+
+    snprintf(grammar_name, sizeof(grammar_name), "%s/%s;", grammar_dir, ent->d_name);
+    LOGT(TAG, "grammar=%s", grammar_name);
+
+    grammar_name_len = strlen(grammar_name);
+    if (remain_len <= grammar_name_len) {
+      grammar_arrays = (char *)realloc(grammar_arrays, GRAMMAR_ARRAY_SIZE * ++i);
+      remain_len += GRAMMAR_ARRAY_SIZE;
+      LOGT(TAG, "realloc grammar array, len=%d, remain_len=%d", GRAMMAR_ARRAY_SIZE * i, remain_len);
+    }
+
+    strcat(grammar_arrays, grammar_name);
+    remain_len -= grammar_name_len;
+  }
+
+  LOGT(TAG, "grammar_arrays=%s, len=%d", grammar_arrays, strlen(grammar_arrays));
+  closedir(dir);
+
+L_END:
+  return grammar_arrays;
 }
 
 static void _get_am_path(char *am_path, int len) {
-  char workspace[2048];
-  _get_current_workspace(workspace, sizeof(workspace));
-
+  char workspace[MAXPATH];
+  _get_workspace(workspace, sizeof(workspace));
   snprintf(am_path, len, "%s/%s", workspace, "models");
   LOGT(TAG, "am path=%s", am_path);
 }
 
 static int _engine_init() {
   int status;
-  char workspace[MAXPATH];
   char am_path[MAXPATH];
-  char grammar[MAXPATH];
+  char *grammar_arrays = NULL;
 
-  _get_current_workspace(workspace, sizeof(workspace));
-  _get_am_path(am_path, sizeof(am_path));
-
-  pthread_mutex_lock(&g_mutex);
-
-  if (g_is_engine_init) {
+  if (g_is_engine_inited) {
     LOGT(TAG, "release engine");
     UalOFARelease();
   }
@@ -68,10 +115,17 @@ static int _engine_init() {
   LOGT(TAG, "version=%s", UalOFAGetVersion());
   UalOFASetOptionInt(ASR_LOG_ID, 0);
 
-  snprintf(grammar, sizeof(grammar), "%s/%s", workspace, "grammar/ivm_cmd.jsgf.dat");
-  LOGT(TAG, "am=%s, grammar=%s", am_path, grammar);
+  _get_am_path(am_path, sizeof(am_path));
+  grammar_arrays = _get_grammar_arrays();
+  LOGT(TAG, "am=%s, grammar=%s", am_path, grammar_arrays);
 
-  UalOFAInitialize(am_path, grammar);
+  status = UalOFAInitialize(am_path, grammar_arrays);
+  free(grammar_arrays);
+  if (0 != status) {
+    LOGT(TAG, "init failed, rc=%d", status);
+    goto L_ERROR;
+  }
+
   status = UalOFASetOptionInt(ASR_ENGINE_SET_TYPE_ID, KWS_STD_ENGINE);
   if (status == ASR_FATAL_ERROR) {
     LOGE(TAG, "init failed, rc=%d", status);
@@ -81,22 +135,23 @@ static int _engine_init() {
   UalOFASetOptionInt(ASR_SET_BEAM_ID, 1500);
   UalOFASetOptionInt(ASR_ENGINE_SWITCH_LANGUAGE, MANDARIN);
 
-  g_is_engine_init = true;
+  g_is_engine_inited = true;
   LOGT(TAG, "engine init success");
-
-  pthread_mutex_unlock(&g_mutex);
   return 0;
 
 L_ERROR:
-  pthread_mutex_unlock(&g_mutex);
-  return -1;
+  g_is_engine_inited = false;
+  LOGT(TAG, "engine init failed");
 }
 
 JNIEXPORT jint JNICALL Java_com_unisound_aios_audiocheck_JNI_LocalAsrEngine_AsrEngineInit
 (JNIEnv * env, jobject obj, jstring am, jstring grammar) {
-  LOGT(TAG, "engine init");
+  int ret;
 
-  int ret = _engine_init();
+  pthread_mutex_lock(&g_mutex);
+  LOGT(TAG, "engine init");
+  ret = _engine_init();
+  pthread_mutex_unlock(&g_mutex);
 
   fflush(stdout);
   return ret;
@@ -139,7 +194,7 @@ static jboolean _get_asr_result(const char *cmd_word) {
     return false;
   }
 
-  LOGT("ARS_RESULT=%s", res);
+  LOGT(TAG, "ARS_RESULT=%s", res);
   _lasr_result_parse(res, command, &score);
 
   if (0 != strcmp(command, cmd_word)) {
@@ -156,7 +211,9 @@ static jboolean _recognize(signed char *raw_data, int len,
   int status;
   jboolean valid = false;
 
-  pthread_mutex_lock(&g_mutex);
+  if (!g_is_engine_inited) {
+    return valid;
+  }
 
   status = UalOFAStart(grammar, AM_IDX);
   if (status != ASR_RECOGNIZER_OK) {
@@ -169,9 +226,7 @@ static jboolean _recognize(signed char *raw_data, int len,
                              min(fix_one_recongize_len, len));
     if (status == ASR_RECOGNIZER_PARTIAL_RESULT) {
       valid = _get_asr_result(cmd_word);
-      if (valid) {
-        break;
-      }
+      if (valid) break;
     }
 
     len -= fix_one_recongize_len;
@@ -183,7 +238,6 @@ static jboolean _recognize(signed char *raw_data, int len,
   }
 
 L_END:
-  pthread_mutex_unlock(&g_mutex);
   return valid;
 }
 
@@ -205,7 +259,9 @@ JNIEXPORT jboolean JNICALL Java_com_unisound_aios_audiocheck_JNI_LocalAsrEngine_
   const char *cmd = env->GetStringUTFChars(cmd_word, 0);
   LOGT(TAG, "cmd=%s", cmd);
 
+  pthread_mutex_lock(&g_mutex);
   jboolean result = _recognize(wav + WAV_HEADER_LEN, wav_len - WAV_HEADER_LEN, cmd, grammar_name);
+  pthread_mutex_unlock(&g_mutex);
 
   free(wav);
 
@@ -217,71 +273,18 @@ JNIEXPORT jboolean JNICALL Java_com_unisound_aios_audiocheck_JNI_LocalAsrEngine_
   return result;
 }
 
-static void _get_grammar_dir(char *grammar_dir, int len) {
-  char workspace[MAXPATH];
-  _get_current_workspace(workspace, sizeof(workspace));
-  snprintf(grammar_dir, len, "%s/%s", workspace, "grammar");
+static void _reinit_engine_when_update_grammar() {
+  LOGT(TAG, "restart engine start");
+  _engine_init();
+  LOGT(TAG, "restart engine end");
 }
-
-static void _reload_grammar() {
-  DIR *dir;
-  struct dirent *ent;
-  char grammar_dir[MAXPATH];
-  char grammar_name[MAXPATH];
-  char *grammar_arrays;
-  int remain_len = GRAMMAR_ARRAY_SIZE;
-  int i = 1;
-  int err;
-
-  _get_grammar_dir(grammar_dir, sizeof(grammar_dir));
-
-  if (NULL == (dir = opendir(grammar_dir))) {
-    printf("open dir [%s] failed\n", grammar_dir);
-    return;
-  }
-
-  grammar_arrays = (char *)malloc(GRAMMAR_ARRAY_SIZE);
-  grammar_arrays[0] = '\0';
-
-  while ((ent = readdir(dir)) != NULL) {
-    if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0) {
-      continue;
-    }
-
-    LOGT(TAG, "find file=%s", ent->d_name);
-    snprintf(grammar_name, sizeof(grammar_name), "%s/%s;", grammar_dir, ent->d_name);
-    LOGT(TAG, "grammar=%s", grammar_name);
-
-    if (remain_len < strlen(grammar_name)) {
-      grammar_arrays = (char *)realloc(grammar_arrays, GRAMMAR_ARRAY_SIZE * ++i);
-      remain_len += GRAMMAR_ARRAY_SIZE;
-      LOGT(TAG, "realloc grammar array, len=%d, remain_len=%d", GRAMMAR_ARRAY_SIZE * i, remain_len);
-    }
-
-    strcat(grammar_arrays, grammar_name);
-    LOGT(TAG, "grammar_arrays=%s", grammar_arrays);
-  }
-
-  grammar_arrays[strlen(grammar_arrays) - 1] = '\0';
-  LOGT(TAG, "grammar_arrays=%s", grammar_arrays);
-
-  LOGT(TAG, "before reload grammar");
-  err = UalOFAReLoadGrammar(grammar_arrays);
-  LOGT(TAG, "reload grammar done[%d]", err);
-
-  free(grammar_arrays);
-
-  closedir(dir);
-
-}
-
 
 static void _grammar_file_process(const char *name) {
   char workspace[MAXPATH];
   char file_name[MAXPATH];
   char out_name[MAXPATH];
 
-  _get_current_workspace(workspace, sizeof(workspace));
+  _get_workspace(workspace, sizeof(workspace));
 
   snprintf(file_name, sizeof(file_name), "%s/grammar/%s", workspace, name);
   snprintf(out_name, sizeof(file_name), "%s/result/grammar.dat", workspace);
@@ -292,14 +295,14 @@ static void _grammar_file_process(const char *name) {
     return;
   }
 
-  _reload_grammar();
+  _reinit_engine_when_update_grammar();
 
   LOGT(TAG, "build grammar[%s] success", file_name);
 }
 
 static void _grammar_out_path(char *out, int len) {
   char workspace[MAXPATH];
-  _get_current_workspace(workspace, sizeof(workspace));
+  _get_workspace(workspace, sizeof(workspace));
   snprintf(out, len, "%s/result", workspace);
   LOGT(TAG, "grammar out dir=%s", out);
 }
