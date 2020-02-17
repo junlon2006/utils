@@ -269,7 +269,6 @@ JNIEXPORT jboolean JNICALL Java_com_unisound_aios_audiocheck_JNI_LocalAsrEngine_
   env->ReleaseStringUTFChars(cmd_word, cmd);
 
   fflush(stdout);
-
   return result;
 }
 
