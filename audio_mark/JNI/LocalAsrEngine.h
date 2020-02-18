@@ -24,6 +24,38 @@ JNIEXPORT jint JNICALL Java_com_unisound_aios_audiocheck_JNI_LocalAsrEngine_AsrE
 JNIEXPORT jboolean JNICALL Java_com_unisound_aios_audiocheck_JNI_LocalAsrEngine_AsrEngineCheck
   (JNIEnv *, jobject, jbyteArray, jstring, jstring);
 
+/*
+ * Class:     LocalAsrEngine
+ * Method:    AsrGrammarBuild
+ * Signature: (Ljava/lang/String;Ljava/lang/String;)I
+ */
+JNIEXPORT jint JNICALL Java_com_unisound_aios_audiocheck_JNI_LocalAsrEngine_AsrGrammarBuild
+  (JNIEnv *, jobject, jstring, jstring);
+
+/*
+ * Class:     LocalAsrEngine
+ * Method:    AsrGrammarRefresh
+ * Signature: (Ljava/lang/String;)I
+ */
+JNIEXPORT jint JNICALL Java_com_unisound_aios_audiocheck_JNI_LocalAsrEngine_AsrGrammarRefresh
+  (JNIEnv *, jobject, jstring);
+
+/*
+ * Class:     LocalAsrEngine
+ * Method:    AsrEngineRecognThresold
+ * Signature: (F)V
+ */
+JNIEXPORT void JNICALL Java_com_unisound_aios_audiocheck_JNI_LocalAsrEngine_AsrEngineRecognizeThreshold
+  (JNIEnv *, jobject, jfloat);
+
+/*
+ * Class:     LocalAsrEngine
+ * Method:    AsrEngineLoggerLevel
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_com_unisound_aios_audiocheck_JNI_LocalAsrEngine_AsrEngineLoggerLevel
+  (JNIEnv *, jobject, jint);
+
 #ifdef __cplusplus
 }
 #endif

@@ -400,7 +400,7 @@ JNIEXPORT jint JNICALL Java_com_unisound_aios_audiocheck_JNI_LocalAsrEngine_AsrG
   return 0;
 }
 
-JNIEXPORT void JNICALL Java_com_unisound_aios_audiocheck_JNI_LocalAsrEngine_AsrEngineRecognThresold
+JNIEXPORT void JNICALL Java_com_unisound_aios_audiocheck_JNI_LocalAsrEngine_AsrEngineRecognizeThreshold
   (JNIEnv *env, jobject obj, jfloat thresold) {
   pthread_mutex_lock(&g_mutex);
   g_lasr_threshold = thresold;
