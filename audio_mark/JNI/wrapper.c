@@ -18,7 +18,7 @@
 #define TAG                 "Engine"
 #define MAXPATH             (2048)
 #define min(a, b)           (a > b ? b : a)
-#define LASR_THRESHOLD       (-10.0)
+#define LASR_THRESHOLD      (-10.0)
 #define WAV_HEADER_LEN      (44)
 #define AM_IDX              (54)
 #define GRAMMAR_ARRAY_SIZE  (1024 * 512)
