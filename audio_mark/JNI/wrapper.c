@@ -18,13 +18,14 @@
 #define TAG                 "Engine"
 #define MAXPATH             (2048)
 #define min(a, b)           (a > b ? b : a)
-#define LASR_THRESOLD       (-10.0)
+#define LASR_THRESHOLD       (-10.0)
 #define WAV_HEADER_LEN      (44)
 #define AM_IDX              (54)
 #define GRAMMAR_ARRAY_SIZE  (1024 * 512)
 
 static pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
 static jboolean        g_is_engine_inited = false;
+static float           g_lasr_threshold = LASR_THRESHOLD;
 
 static void _get_workspace(char *path, int len) {
   if (NULL == getcwd(path, len)) {
@@ -145,7 +146,7 @@ L_ERROR:
 }
 
 JNIEXPORT jint JNICALL Java_com_unisound_aios_audiocheck_JNI_LocalAsrEngine_AsrEngineInit
-(JNIEnv * env, jobject obj, jstring am, jstring grammar) {
+  (JNIEnv * env, jobject obj, jstring am, jstring grammar) {
   int ret;
 
   pthread_mutex_lock(&g_mutex);
@@ -201,7 +202,7 @@ static jboolean _get_asr_result(const char *cmd_word) {
     return false;
   }
 
-  return (score > LASR_THRESOLD);
+  return (score > g_lasr_threshold);
 }
 
 static jboolean _recognize(signed char *raw_data, int len,
@@ -242,7 +243,7 @@ L_END:
 }
 
 JNIEXPORT jboolean JNICALL Java_com_unisound_aios_audiocheck_JNI_LocalAsrEngine_AsrEngineCheck
-(JNIEnv *env, jobject obj, jbyteArray audio, jstring grammar, jstring cmd_word) {
+  (JNIEnv *env, jobject obj, jbyteArray audio, jstring grammar, jstring cmd_word) {
   int wav_len = env->GetArrayLength(audio);
   LOGT(TAG, "wav_len=%d", wav_len);
   if (wav_len <= WAV_HEADER_LEN) {
@@ -307,7 +308,7 @@ static void _grammar_out_path(char *out, int len) {
 }
 
 JNIEXPORT jint JNICALL Java_com_unisound_aios_audiocheck_JNI_LocalAsrEngine_AsrGrammarBuild
-(JNIEnv *env, jobject obj, jstring jsgf, jstring jsgf_name) {
+  (JNIEnv *env, jobject obj, jstring jsgf, jstring jsgf_name) {
   int ret = 0, err;
   char am_path[MAXPATH];
   char grammar_out[MAXPATH];
@@ -397,4 +398,27 @@ JNIEXPORT jint JNICALL Java_com_unisound_aios_audiocheck_JNI_LocalAsrEngine_AsrG
 
   fflush(stdout);
   return 0;
+}
+
+JNIEXPORT void JNICALL Java_com_unisound_aios_audiocheck_JNI_LocalAsrEngine_AsrEngineRecognThresold
+  (JNIEnv *env, jobject obj, jfloat thresold) {
+  pthread_mutex_lock(&g_mutex);
+  g_lasr_threshold = thresold;
+  LOGT(TAG, "set lasr threshold=%f", g_lasr_threshold);
+  pthread_mutex_unlock(&g_mutex);
+
+  fflush(stdout);
+}
+
+JNIEXPORT void JNICALL Java_com_unisound_aios_audiocheck_JNI_LocalAsrEngine_AsrEngineLoggerLevel
+  (JNIEnv *env, jobject obj, jint log_level) {
+  pthread_mutex_lock(&g_mutex);
+  if (0 == LogLevelSet((LogLevel)log_level)) {
+    LOGT(TAG, "set log_level=%d", log_level);
+  } else {
+    LOGE(TAG, "log level[%d] invalid", log_level);
+  }
+  pthread_mutex_unlock(&g_mutex);
+
+  fflush(stdout);
 }
