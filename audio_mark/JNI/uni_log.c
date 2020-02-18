@@ -35,16 +35,8 @@
 
 #define LOG_BUFFER_LEN       (1024)
 #define LOG_FILE_NAME        "app.log"
-#define uni_min(x,y)         ({ \
-                                typeof(x) _x = (x); \
-                                typeof(y) _y = (y); \
-                                (void)(&_x == &_y); \
-                                _x < _y ? _x : _y;})
-#define uni_max(x,y)         ({ \
-                                typeof(x) _x = (x); \
-                                typeof(y) _y = (y); \
-                                (void)(&_x == &_y); \
-                                _x > _y ? _x : _y;})
+#define uni_min(x, y)        (x > y ? y : x)
+#define uni_max(x, y)        (x > y ? x : y)
 
 typedef struct {
   int             fd;
@@ -211,6 +203,10 @@ static void _destroy_all() {
 }
 
 int LogLevelSet(LogLevel level) {
+  if (level < N_LOG_NONE || level > N_LOG_ALL) {
+    return -1;
+  }
+
   g_log_config.set_level = level;
   return 0;
 }
