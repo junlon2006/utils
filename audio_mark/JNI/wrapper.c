@@ -18,7 +18,7 @@
 #define TAG                 "Engine"
 #define MAXPATH             (2048)
 #define min(a, b)           (a > b ? b : a)
-#define LASR_THRESHOLD       (-10.0)
+#define LASR_THRESHOLD      (-10.0)
 #define WAV_HEADER_LEN      (44)
 #define AM_IDX              (54)
 #define GRAMMAR_ARRAY_SIZE  (1024 * 512)
@@ -400,7 +400,7 @@ JNIEXPORT jint JNICALL Java_com_unisound_aios_audiocheck_JNI_LocalAsrEngine_AsrG
   return 0;
 }
 
-JNIEXPORT void JNICALL Java_com_unisound_aios_audiocheck_JNI_LocalAsrEngine_AsrEngineRecognThresold
+JNIEXPORT void JNICALL Java_com_unisound_aios_audiocheck_JNI_LocalAsrEngine_AsrEngineRecognizeThreshold
   (JNIEnv *env, jobject obj, jfloat thresold) {
   pthread_mutex_lock(&g_mutex);
   g_lasr_threshold = thresold;
