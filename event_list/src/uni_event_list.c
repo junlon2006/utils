@@ -219,7 +219,7 @@ static void _worker_thread_create(EventList *event_list) {
 }
 
 EventListHandle EventListCreate(EventListEventHandler event_handler,
-                                      EventListEventFreeHandler free_handler) {
+                                EventListEventFreeHandler free_handler) {
   EventList *event_list = NULL;
   if (NULL == (event_list = (EventList*)malloc(sizeof(EventList)))) {
     return NULL;
