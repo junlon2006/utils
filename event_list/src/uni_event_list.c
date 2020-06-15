@@ -211,7 +211,6 @@ static void _register_interuppt_handler(EventList *event_list) {
 static void _worker_thread_create(EventList *event_list) {
   pthread_condattr_t attr;
   pthread_condattr_init(&attr);
-  pthread_attr_setstacksize(&attr, 16 * 1024);
   pthread_condattr_setclock(&attr, CLOCK_MONOTONIC);
   pthread_cond_init(&event_list->cond, &attr);
   pthread_mutex_init(&event_list->mutex, NULL);
