@@ -32,7 +32,7 @@
 #define _consume_higest_list               _consume_one_list
 #define _consume_medium_list               _consume_one_list
 #define _consume_lowest_list               _consume_one_list
-#define THREAD_TRY_COND_TIMROUT_MSC        (1000)
+#define THREAD_TRY_COND_TIMROUT_MSC        (100)
 
 typedef int (*_interruptable_handler)(void *args);
 
@@ -204,8 +204,8 @@ static void _register_free_handler(EventList *event_list,
 
 static void _register_interuppt_handler(EventList *event_list) {
   event_list->highest_interrupt_handler = _highest_interruptable_handler;
-  event_list->medium_interrupt_handler = _medium_interruptable_handler;
-  event_list->lowest_interrupt_handler = _lowest_interruptable_handler;
+  event_list->medium_interrupt_handler  = _medium_interruptable_handler;
+  event_list->lowest_interrupt_handler  = _lowest_interruptable_handler;
 }
 
 static void _worker_thread_create(EventList *event_list) {
@@ -235,7 +235,8 @@ EventListHandle EventListCreate(EventListEventHandler event_handler,
 
 int EventListDestroy(EventListHandle handle) {
   EventList *event_list = (EventList*)handle;
-  event_list->running = 0;
+  event_list->running   = 0;
+  pthread_join(event_list->pid, NULL);
   return 0;
 }
 
@@ -246,7 +247,7 @@ int EventListAdd(EventListHandle handle, void *event, int priority) {
     return -1;
   }
   item->priority = priority;
-  item->event = event;
+  item->event    = event;
   pthread_mutex_lock(&event_list->mutex);
   if (EVENT_LIST_PRIORITY_HIGHEST == priority) {
     list_add_tail(&item->link, &event_list->highest_list);
