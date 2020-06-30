@@ -143,6 +143,7 @@ static int _engine_init() {
 L_ERROR:
   g_is_engine_inited = false;
   LOGT(TAG, "engine init failed");
+  return -1;
 }
 
 JNIEXPORT jint JNICALL Java_com_unisound_aios_audiocheck_JNI_LocalAsrEngine_AsrEngineInit
