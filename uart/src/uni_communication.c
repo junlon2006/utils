@@ -458,7 +458,7 @@ static uni_bool _bytes_coming_speed_too_slow(int index) {
   return timeout;
 }
 
-static void _protocol_buffer_generate_byte_by_byte(char recv_c) {
+static void _protocol_buffer_generate_byte_by_byte(unsigned char recv_c) {
   static int index = 0;
   static int length = 0;
   static int protocol_buffer_length = DEFAULT_PROTOCOL_BUF_SIZE;
@@ -526,7 +526,7 @@ L_END:
 
 void CommProtocolReceiveUartData(char *buf, int len) {
   for (int i = 0; i < len; i++) {
-    _protocol_buffer_generate_byte_by_byte(buf[i]);
+    _protocol_buffer_generate_byte_by_byte((unsigned char)buf[i]);
   }
 }
 
