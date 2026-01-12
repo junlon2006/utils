@@ -42,12 +42,15 @@ typedef struct {
 
 static RingBuf *_create_ring_buf() {
   RingBuf *ring_buf = (RingBuf *)malloc(sizeof(RingBuf));
-  ring_buf->head = ring_buf->tail = 0;
+  __atomic_store_n(&ring_buf->head, 0, __ATOMIC_RELAXED);
+  __atomic_store_n(&ring_buf->tail, 0, __ATOMIC_RELAXED);
   return ring_buf;
 }
 
 static int _get_data_size(RingBuf *ring_buf) {
-  return (ring_buf->head + ring_buf->size - ring_buf->tail) % ring_buf->size;
+  int head = __atomic_load_n(&ring_buf->head, __ATOMIC_ACQUIRE);
+  int tail = __atomic_load_n(&ring_buf->tail, __ATOMIC_ACQUIRE);
+  return (head + ring_buf->size - tail) % ring_buf->size;
 }
 
 static int _get_free_size(RingBuf *ring_buf) {
@@ -58,7 +61,8 @@ static void _init_ring_buf(void *ring_buf, int size) {
   RingBuf *buf = (RingBuf *)ring_buf;
   buf->size = size + RINGBBUF_FILL_BYTE_SIZE;
   buf->buf = (char *)malloc(size + RINGBBUF_FILL_BYTE_SIZE);
-  buf->head = buf->tail = 0;
+  __atomic_store_n(&buf->head, 0, __ATOMIC_RELAXED);
+  __atomic_store_n(&buf->tail, 0, __ATOMIC_RELAXED);
 }
 
 static inline int _read_attr_setted(RingBufferAttr attr) {
@@ -85,18 +89,19 @@ static int _read_internal(RingBufferHandle handle, char *buf, int size,
                           RingBufferAttr attr) {
   RingBuf *ring_buf = (RingBuf *)handle;
   int pos, remain;
-  pos = (ring_buf->tail + size) % ring_buf->size;
+  int tail = __atomic_load_n(&ring_buf->tail, __ATOMIC_RELAXED);
+  pos = (tail + size) % ring_buf->size;
   if (_read_attr_setted(attr)) {
-    if (pos >= ring_buf->tail) {
-      memcpy(buf, ring_buf->buf + ring_buf->tail, size);
+    if (pos >= tail) {
+      memcpy(buf, ring_buf->buf + tail, size);
     } else {
-      remain = (ring_buf->size - ring_buf->tail);
-      memcpy(buf, ring_buf->buf + ring_buf->tail, remain);
+      remain = (ring_buf->size - tail);
+      memcpy(buf, ring_buf->buf + tail, remain);
       memcpy(buf + remain, ring_buf->buf, size - remain);
     }
   }
   if (_sync_attr_setted(attr)) {
-    ring_buf->tail = pos;
+    __atomic_store_n(&ring_buf->tail, pos, __ATOMIC_RELEASE);
   }
   return size;
 }
@@ -105,18 +110,19 @@ static int _write_internal(RingBufferHandle handle, char *buf, int size,
                            RingBufferAttr attr) {
   RingBuf *ring_buf = (RingBuf *)handle;
   int pos, remain;
-  pos = (ring_buf->head + size) % ring_buf->size;
+  int head = __atomic_load_n(&ring_buf->head, __ATOMIC_RELAXED);
+  pos = (head + size) % ring_buf->size;
   if (_write_attr_setted(attr)) {
-    if (pos >= ring_buf->head) {
-      memcpy(ring_buf->buf + ring_buf->head, buf, size);
+    if (pos >= head) {
+      memcpy(ring_buf->buf + head, buf, size);
     } else {
-      remain = (ring_buf->size - ring_buf->head);
-      memcpy(ring_buf->buf + ring_buf->head, buf, remain);
+      remain = (ring_buf->size - head);
+      memcpy(ring_buf->buf + head, buf, remain);
       memcpy(ring_buf->buf, buf + remain, size - remain);
     }
   }
   if (_sync_attr_setted(attr)) {
-    ring_buf->head = pos;
+    __atomic_store_n(&ring_buf->head, pos, __ATOMIC_RELEASE);
   }
   return size;
 }
@@ -156,7 +162,8 @@ static int _ring_buffer_write(RingBufferHandle handle, char *src, int writelen,
 
 int RingBufferClear(RingBufferHandle handle) {
   RingBuf *ring_buf = (RingBuf *)handle;
-  ring_buf->head = ring_buf->tail = 0;
+  __atomic_store_n(&ring_buf->head, 0, __ATOMIC_RELEASE);
+  __atomic_store_n(&ring_buf->tail, 0, __ATOMIC_RELEASE);
   return 0;
 }
 
